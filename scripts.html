@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Discover, share, and save community-made Roblox scripts on VoidedX.">
+    <title>Community Scripts | VoidedX</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="scripts-page">
+    <header class="top-nav scripts-nav">
+        <a href="/" class="brand-unit brand-unit-link">
+            <img src="logo.png" alt="VoidedX" class="brand-icon-img">
+            <span class="brand-titles"><span class="brand-name">VOIDEDX</span><span class="brand-tag">COMMUNITY</span></span>
+        </a>
+        <nav class="scripts-nav-links" aria-label="Main navigation">
+            <a href="/scripts" class="scripts-nav-active"><i class="fa-solid fa-compass"></i> Explore</a>
+            <a href="/leaderboard"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+            <a href="/" class="btn-ghost scripts-create-link"><i class="fa-solid fa-code"></i> Script Builder</a>
+        </nav>
+        <div class="scripts-account-actions">
+            <span id="scripts-user-label" class="user-badge"><i class="fa-solid fa-user"></i> Guest</span>
+            <button id="scripts-auth-btn" class="btn-accent" type="button"><i class="fa-solid fa-right-to-bracket"></i> Sign in</button>
+        </div>
+    </header>
+
+    <main class="scripts-main">
+        <section class="scripts-hero">
+            <div class="scripts-hero-copy">
+                <span class="scripts-eyebrow"><i class="fa-solid fa-sparkles"></i> THE VOIDEDX COMMUNITY</span>
+                <h1>Scripts made<br><span>by the community.</span></h1>
+                <p>Find useful scripts, save the ones you like, and share your own work with other creators.</p>
+                <div class="scripts-hero-actions">
+                    <button id="hero-upload-btn" class="btn-primary" type="button"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share a script</button>
+                    <a href="#script-browser" class="btn-ghost"><i class="fa-solid fa-compass"></i> Browse scripts</a>
+                </div>
+            </div>
+            <div class="scripts-hero-art" aria-hidden="true">
+                <div class="scripts-orbit orbit-one"></div><div class="scripts-orbit orbit-two"></div>
+                <div class="scripts-code-window"><div class="scripts-window-top"><span></span><span></span><span></span><b>community.lua</b></div><pre><i>01</i> <em>local</em> vx = <strong>VoidedX</strong>
+<i>02</i> vx.<b>create</b>({
+<i>03</i>   community = <u>true</u>,
+<i>04</i>   ideas = <u>∞</u>
+<i>05</i>})</pre><div class="scripts-window-glow"></div></div>
+                <span class="scripts-floating-tag tag-community"><i class="fa-solid fa-users"></i> Creator community</span>
+                <span class="scripts-floating-tag tag-open"><i class="fa-solid fa-heart"></i> Made to share</span>
+            </div>
+        </section>
+
+        <section class="scripts-stats" aria-label="Community statistics">
+            <div><span class="scripts-stat-icon"><i class="fa-solid fa-code"></i></span><strong id="scripts-stat-count">—</strong><small>community scripts</small></div>
+            <div><span class="scripts-stat-icon"><i class="fa-solid fa-heart"></i></span><strong id="scripts-stat-likes">—</strong><small>community likes</small></div>
+            <div><span class="scripts-stat-icon"><i class="fa-solid fa-eye"></i></span><strong id="scripts-stat-views">—</strong><small>script views</small></div>
+            <div class="scripts-stat-note"><i class="fa-solid fa-shield-halved"></i><span>Uploads are reviewed before they appear publicly.</span></div>
+        </section>
+
+        <section id="script-browser" class="script-browser">
+            <div class="script-browser-heading">
+                <div><p class="scripts-eyebrow">FIND YOUR NEXT FAVORITE</p><h2>Script library</h2><p class="script-browser-subtitle">Search community uploads by name, game, or tag.</p></div>
+                <button id="browser-upload-btn" class="btn-accent script-browser-upload" type="button"><i class="fa-solid fa-plus"></i> Upload script</button>
+            </div>
+
+            <div class="script-browser-tools">
+                <label class="script-search"><i class="fa-solid fa-magnifying-glass"></i><input id="script-search-input" type="search" placeholder="Search scripts, games, or tags…" autocomplete="off"><kbd>/</kbd></label>
+                <select id="script-category-filter" class="input-field" aria-label="Filter by category">
+                    <option value="all">All categories</option><option>Universal</option><option>Simulator</option><option>Combat</option><option>Utility</option><option>Other</option>
+                </select>
+                <select id="script-sort" class="input-field" aria-label="Sort scripts">
+                    <option value="popular">Most liked</option><option value="recent">Recently added</option><option value="viewed">Most viewed</option><option value="downloaded">Most downloaded</option>
+                </select>
+            </div>
+
+            <div class="script-tabs" role="tablist" aria-label="Script collections">
+                <button class="script-tab active" type="button" role="tab" aria-selected="true" data-tab="explore"><i class="fa-solid fa-compass"></i> Explore <span id="explore-count">0</span></button>
+                <button class="script-tab" type="button" role="tab" aria-selected="false" data-tab="saved"><i class="fa-regular fa-bookmark"></i> Saved <span id="saved-count">0</span></button>
+                <button class="script-tab" type="button" role="tab" aria-selected="false" data-tab="mine"><i class="fa-solid fa-user-pen"></i> My uploads <span id="mine-count">0</span></button>
+            </div>
+
+            <div id="script-grid" class="script-grid" aria-live="polite">
+                <div class="script-loading"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading community scripts…</span></div>
+            </div>
+            <div id="scripts-empty" class="scripts-empty hidden"><span><i class="fa-solid fa-box-open"></i></span><h3>No scripts found</h3><p>Try another search, or share the first script in this category.</p><button class="btn-ghost" type="button" data-open-upload><i class="fa-solid fa-plus"></i> Upload a script</button></div>
+        </section>
+
+        <section class="scripts-guidelines">
+            <div class="guidelines-icon"><i class="fa-solid fa-shield-heart"></i></div>
+            <div><h3>Keep the community useful and safe</h3><p>Only share work you have permission to post. Uploads are reviewed. Malware, credential theft, doxxing, and harmful content are not allowed. Scripts are displayed as code for people to review; VoidedX does not run community uploads.</p></div>
+            <a href="#upload-guidelines" id="guidelines-open-upload" class="guidelines-link">Read upload rules <i class="fa-solid fa-arrow-right"></i></a>
+        </section>
+        <footer class="scripts-footer"><a href="/">VoidedX</a><span>Built for creators who share.</span><a href="/leaderboard">View leaderboard</a></footer>
+    </main>
+
+    <div id="scripts-toast-container" class="toast-container" aria-live="polite"></div>
+
+    <div id="scripts-auth-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scripts-auth-heading">
+        <div class="auth-card scripts-modal-card">
+            <button class="modal-close-x" type="button" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header"><i class="fa-solid fa-user-shield auth-header-icon"></i><h2 id="scripts-auth-heading">Welcome to VoidedX</h2><p id="scripts-auth-subtitle" class="auth-subheading">Sign in to like, save, and upload scripts.</p></div>
+            <div class="auth-tabs"><button id="scripts-login-tab" class="auth-tab active" type="button">Sign in</button><button id="scripts-signup-tab" class="auth-tab" type="button">Create account</button></div>
+            <div id="scripts-auth-error" class="auth-banner error hidden" role="alert"></div>
+            <label class="panel-label" for="scripts-auth-email">EMAIL</label><input id="scripts-auth-email" class="input-field" type="email" autocomplete="email" placeholder="you@example.com">
+            <label class="panel-label" for="scripts-auth-password">PASSWORD</label><input id="scripts-auth-password" class="input-field" type="password" autocomplete="current-password" placeholder="At least 6 characters">
+            <button id="scripts-auth-submit" class="btn-primary" type="button">Sign in</button>
+            <button class="btn-ghost" type="button" data-close-modal>Cancel</button>
+        </div>
+    </div>
+
+    <div id="script-upload-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="upload-heading">
+        <form id="script-upload-form" class="script-upload-card">
+            <button class="modal-close-x" type="button" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header"><i class="fa-solid fa-cloud-arrow-up auth-header-icon"></i><h2 id="upload-heading">Share your script</h2><p class="auth-subheading">Your upload will be checked by a moderator before it goes live.</p></div>
+            <div class="script-form-grid">
+                <label class="gui-setting">SCRIPT NAME<input id="upload-title" class="input-field" maxlength="80" required placeholder="Example: Inventory helper"></label>
+                <label class="gui-setting">CATEGORY<select id="upload-category" class="input-field" required><option value="">Choose a category</option><option>Universal</option><option>Simulator</option><option>Combat</option><option>Utility</option><option>Other</option></select></label>
+                <label class="gui-setting">CREATOR NAME (OPTIONAL)<input id="upload-author" class="input-field" maxlength="32" placeholder="Community member"></label>
+                <label class="gui-setting">GAME (OPTIONAL)<input id="upload-game" class="input-field" maxlength="80" placeholder="Any game"></label>
+                <label class="gui-setting">TAGS (OPTIONAL)<input id="upload-tags" class="input-field" maxlength="150" placeholder="ui, helper, movement"></label>
+                <label class="gui-setting script-form-wide">DESCRIPTION<textarea id="upload-description" class="input-field script-form-textarea" maxlength="400" rows="3" required placeholder="What does it do? Add a clear, helpful description."></textarea></label>
+                <label class="gui-setting script-form-wide">SCRIPT CODE<textarea id="upload-code" class="input-field script-code-input" maxlength="40000" rows="12" required spellcheck="false" placeholder="Paste the script code here…"></textarea><span id="upload-code-count" class="field-hint script-code-count">0 / 40,000</span></label>
+            </div>
+            <label class="script-rules-check"><input id="upload-rules-check" type="checkbox" required><span>I have permission to share this work. It does not contain malware, credential theft, doxxing, or harmful content. I understand it will be reviewed before publishing.</span></label>
+            <div id="upload-error" class="auth-banner error hidden" role="alert"></div>
+            <div class="script-upload-actions"><button class="btn-primary" id="upload-submit-btn" type="submit"><i class="fa-solid fa-paper-plane"></i> Send for review</button><button class="btn-ghost" type="button" data-close-modal>Cancel</button></div>
+            <p class="script-upload-limit"><i class="fa-solid fa-circle-info"></i> You can submit up to 5 scripts per day. Maximum code size: 40 KB.</p>
+        </form>
+    </div>
+
+    <div id="script-detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <article class="script-detail-card">
+            <button class="modal-close-x" type="button" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <div id="detail-category" class="script-card-category"></div>
+            <h2 id="detail-title">Loading script…</h2>
+            <p id="detail-description" class="script-detail-description"></p>
+            <div class="script-detail-meta"><span id="detail-author"></span><span id="detail-game"></span><span id="detail-date"></span></div>
+            <div id="detail-tags" class="script-card-tags"></div>
+            <div class="script-detail-code-head"><span><i class="fa-solid fa-code"></i> Script source</span><small>Review the code before using it.</small></div>
+            <textarea id="detail-code" class="script-detail-code" readonly spellcheck="false" aria-label="Script source code"></textarea>
+            <div class="script-detail-actions"><button id="detail-copy-btn" class="btn-primary" type="button"><i class="fa-solid fa-copy"></i> Copy script</button><button id="detail-download-btn" class="btn-ghost" type="button"><i class="fa-solid fa-download"></i> Download .txt</button><button id="detail-share-btn" class="btn-ghost" type="button"><i class="fa-solid fa-share-nodes"></i> Share</button><button id="detail-like-btn" class="btn-ghost" type="button"><i class="fa-regular fa-heart"></i> Like</button><button id="detail-save-btn" class="btn-ghost" type="button"><i class="fa-regular fa-bookmark"></i> Save</button></div>
+            <div class="script-report-area"><button id="report-toggle-btn" class="script-report-toggle" type="button"><i class="fa-solid fa-flag"></i> Report this script</button><div id="report-form" class="hidden"><label class="gui-setting" for="report-reason">Why should a moderator review this?</label><textarea id="report-reason" class="input-field" maxlength="300" rows="2" placeholder="Describe the issue"></textarea><button id="report-submit-btn" class="btn-danger" type="button">Send report</button></div></div>
+        </article>
+    </div>
+
+    <script type="module" src="scripts.js"></script>
+</body>
+</html>

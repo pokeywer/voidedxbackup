@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoidedX // Script Vault</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1505057249528749" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="shell">
+        <div id="site-announcement" class="site-announcement hidden" role="status" aria-live="polite">
+            <i id="site-announcement-icon" class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            <div class="site-announcement-copy"><strong id="site-announcement-title"></strong><span id="site-announcement-message"></span></div>
+            <a id="site-announcement-link" class="site-announcement-link hidden" target="_blank" rel="noopener noreferrer"></a>
+            <button id="site-announcement-dismiss" class="site-announcement-dismiss" type="button" aria-label="Dismiss announcement"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="promo-banner">
+            <i class="fa-solid fa-rocket promo-icon"></i>
+            <span><strong>VoidedX Script Vault</strong> — Fast, Free & Secure Roblox Script Hosting & Key System! Share your scripts safely.</span>
+            <button class="btn-promo" id="promo-share-btn"><i class="fa-solid fa-share-nodes"></i> Share VoidedX</button>
+        </div>
+        <header class="top-nav">
+            <div class="brand-unit">
+                <img src="logo.png" alt="VoidedX" class="brand-icon-img">
+                <div class="brand-titles">
+                    <span class="brand-name">VOIDEDX</span>
+                    <span class="brand-tag">FREE</span>
+                </div>
+            </div>
+            <div class="nav-user">
+                <a href="/scripts" aria-label="Community script library" class="btn-ghost leaderboard-nav-link community-nav-link"><i class="fa-solid fa-compass"></i> Script Library</a>
+                <a href="/leaderboard" class="btn-ghost leaderboard-nav-link"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+                <button id="ideas-btn" aria-label="Share your ideas" class="btn-accent btn-ideas" type="button"><i class="fa-solid fa-lightbulb"></i> Share Your Ideas</button>
+                <span id="user-display" class="user-badge"><i class="fa-solid fa-user"></i> Guest</span>
+                <button id="auth-btn" class="btn-accent"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <aside class="sidebar">
+                <button type="button" id="new-vault-btn" class="btn-ghost btn-new-vault"><i class="fa-solid fa-plus"></i> New Vault</button>
+
+                <div class="panel-group">
+                    <label class="panel-label">VAULT TITLE</label>
+                    <input type="text" id="script-title" name="vx-vault-title" class="input-field" placeholder="Hub / Script Name" autocomplete="off" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');">
+                    <span class="field-error hidden" id="title-error"></span>
+                </div>
+
+                <details class="mobile-vault-settings" id="mobile-vault-settings" open>
+                    <summary><span><i class="fa-solid fa-sliders"></i> Vault settings</span><i class="fa-solid fa-chevron-down mobile-settings-chevron"></i></summary>
+                    <div class="mobile-vault-settings-content">
+                <div class="panel-group">
+                    <label class="panel-label">VAULT OVERVIEW</label>
+                    <div class="vault-overview" aria-label="Your vault statistics">
+                        <div class="vault-stat-card"><strong id="vault-stat-total">0</strong><span>Vaults</span></div>
+                        <div class="vault-stat-card"><strong id="vault-stat-executions">0</strong><span>Executions</span></div>
+                        <div class="vault-stat-card"><strong id="vault-stat-protected">0</strong><span>Key gated</span></div>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <button type="button" id="vault-list-toggle" class="vault-list-header">
+                        <span><i class="fa-solid fa-vault"></i> MY VAULTS <span id="vault-list-count" class="vault-list-count hidden">0</span></span>
+                        <i class="fa-solid fa-chevron-down vault-list-chevron"></i>
+                    </button>
+                    <div id="vault-list-panel" class="vault-list-panel">
+                        <div class="vault-list-panel-inner">
+                            <button type="button" id="claim-vault-btn" class="btn-ghost" style="margin-bottom:8px;"><i class="fa-solid fa-life-ring"></i> Recover old vault by ID</button>
+                            <div class="vault-list-tools">
+                                <input type="search" id="vault-search" class="input-field" placeholder="Search your vaults..." aria-label="Search your vaults" autocomplete="off">
+                                <select id="vault-sort" class="input-field" aria-label="Sort vaults">
+                                    <option value="recent">Recently updated</option>
+                                    <option value="executions">Most executions</option>
+                                    <option value="title">Title A–Z</option>
+                                </select>
+                                <select id="vault-filter" class="input-field" aria-label="Filter vaults by key protection">
+                                    <option value="all">All vaults</option>
+                                    <option value="protected">Key protected</option>
+                                    <option value="open">Not key protected</option>
+                                </select>
+                            </div>
+                            <div id="vault-list" class="vault-list">
+                                <div class="info-box"><p>Log in to save and manage your script vaults cloud-wide.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">OPTIONS</label>
+                    <button type="button" id="open-keysystem-btn" class="btn-ghost btn-keysystem-open">
+                        <i class="fa-solid fa-key text-cyan"></i> Key System Manager
+                        <span id="keysystem-status-badge" class="keysystem-badge hidden">OFF</span>
+                    </button>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">VAULT PROTECTION</label>
+                    <div class="protection-state-row">
+                        <span><i class="fa-solid fa-key"></i> Key access gate</span>
+                        <strong id="protection-key-status" class="protection-state off">OFF</strong>
+                    </div>
+                    <div class="toggle-list">
+                        <label class="toggle-row">
+                            <span>Auto .txt Local Backup</span>
+                            <input type="checkbox" id="chk-backup" checked>
+                            <span class="switch"></span>
+                        </label>
+                    </div>
+                    <button type="button" id="backup-now-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-download"></i> Download backup now</button>
+                    <div class="protection-hint">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>Use the Key System Manager to gate access. Anyone who can run a script can inspect its delivered code, so never include passwords or private API keys.</span>
+                    </div>
+                </div>
+                    </div>
+                </details>
+
+                <div class="sidebar-save-dock">
+                    <input type="hidden" id="active-vault-id">
+                    <div class="protection-hint auto-delete-warning" role="note">
+                        <i class="fa-solid fa-clock"></i>
+                        <span>Warning: A saved vault with 0 executions is deleted after 10 hours. Saving it again restarts the timer. If you close this page, cleanup runs when you return. Download a backup to keep an unused script.</span>
+                    </div>
+                    <button id="lock-vault-btn" class="btn-primary">
+                        <i class="fa-solid fa-lock"></i> SAVE / UPDATE VAULT
+                    </button>
+                    <span class="field-hint editor-shortcut-hint">Tip: Press Ctrl+S or ⌘+S while editing to save.</span>
+                    <button id="delete-vault-btn" class="btn-danger hidden">
+                        <i class="fa-solid fa-trash"></i> DELETE VAULT
+                    </button>
+                </div>
+            </aside>
+
+            <section class="editor-stage">
+                <div class="editor-header">
+                    <span class="editor-title"><i class="fa-solid fa-code"></i> PASTE YOUR SCRIPT </span>
+                    <div class="editor-header-right">
+                        <span id="editor-save-status" class="editor-save-status" role="status" aria-live="polite"><i class="fa-solid fa-circle-check"></i><span id="editor-save-label">All changes saved</span></span>
+                        <span id="exec-count-badge" class="exec-count-badge hidden"><i class="fa-solid fa-play text-cyan"></i> <span id="exec-count-num">0</span> Executions</span>
+                        <span id="editing-indicator" class="text-cyan hidden"><i class="fa-solid fa-pen"></i> Editing Existing Vault</span>
+                    </div>
+                </div>
+                <div class="editor-tools" aria-label="Script editor tools">
+                    <span class="editor-language"><span class="language-dot"></span> LUAU</span>
+                    <span class="editor-tools-hint">Syntax colors are a guide; run a check for common issues.</span>
+                    <button id="check-code-btn" class="check-code-btn" type="button"><i class="fa-solid fa-stethoscope"></i> Check code</button>
+                </div>
+                <div class="code-editor-wrap">
+                    <div id="line-numbers" class="line-numbers" aria-hidden="true">1</div>
+                    <div class="code-editor-surface">
+                        <pre id="syntax-highlight" class="syntax-highlight" aria-hidden="true"></pre>
+                        <textarea id="source-code" aria-label="Luau script editor" placeholder="-- Paste your script here.&#10;-- Keep passwords and private API keys out of client-side code.&#10;print('VoidedX')" spellcheck="false" wrap="off"></textarea>
+                    </div>
+                </div>
+                <span class="field-error field-error-block hidden" id="code-error"></span>
+                <section id="code-diagnostics" class="code-diagnostics hidden" aria-live="polite" aria-label="Code check results">
+                    <div class="diagnostics-heading">
+                        <strong><i class="fa-solid fa-list-check"></i> Code check</strong>
+                        <span id="diagnostics-summary">No check run yet</span>
+                        <button id="close-diagnostics-btn" class="icon-button" type="button" aria-label="Close code check results"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <p id="diagnostics-hint" class="diagnostics-hint">These quick checks catch common issues; they are not a full Luau compiler.</p>
+                    <ul id="code-diagnostics-list" class="code-diagnostics-list"></ul>
+                </section>
+
+                <div id="result-overlay" class="result-panel hidden">
+                    <div class="result-content">
+                        <h4><i class="fa-solid fa-circle-check text-success"></i> VAULT SAVED!</h4>
+                        <div class="url-bar">
+                            <input type="text" id="ls-output" readonly>
+                            <button id="copy-out-btn" class="btn-accent"><i class="fa-solid fa-copy"></i> COPY LOADSTRING</button>
+                        </div>
+                        <p class="field-hint loadstring-help">This is a small launcher that fetches your saved vault when run. To show the in-game key popup, add a key, turn on <strong>Key System</strong> and <strong>In-Game Key GUI</strong> in Key System Manager, then click Apply Changes.</p>
+                        <div id="get-key-row" class="url-bar hidden">
+                            <input type="text" id="get-key-output" readonly>
+                            <button id="copy-key-link-btn" class="btn-accent"><i class="fa-solid fa-key"></i> COPY GET-KEY LINK</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="auth-card">
+            <button id="auth-close-x" class="modal-close-x" aria-label="Close" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header">
+                <i class="fa-solid fa-shield-halved auth-header-icon"></i>
+                <h3 id="auth-heading">Welcome back</h3>
+                <p id="auth-subheading" class="auth-subheading">Log in to sync your vaults to the cloud.</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button id="tab-login" class="auth-tab active" type="button">Log In</button>
+                <button id="tab-signup" class="auth-tab" type="button">Sign Up</button>
+            </div>
+
+            <button id="google-auth-btn" class="google-auth-btn" type="button">
+                <i class="fa-brands fa-google google-brand-icon" aria-hidden="true"></i>
+                <span id="google-auth-label">Continue with Google</span>
+            </button>
+            <div class="auth-divider" aria-hidden="true"><span>or continue with email</span></div>
+
+            <div id="auth-banner" class="auth-banner hidden"></div>
+
+            <div class="panel-group">
+                <label class="panel-label">EMAIL</label>
+                <input type="email" id="auth-email" class="input-field" placeholder="developer@voidedx.com" autocomplete="email">
+                <span class="field-error hidden" id="email-error"></span>
+            </div>
+            <div class="panel-group">
+                <label class="panel-label">PASSWORD</label>
+                <div class="password-field">
+                    <input type="password" id="auth-password" class="input-field" placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" id="toggle-password-btn" class="password-toggle" aria-label="Show password">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <span class="field-error hidden" id="password-error"></span>
+                <span id="password-hint" class="field-hint hidden">Use at least 6 characters.</span>
+            </div>
+            <button id="auth-submit-btn" class="btn-primary">
+                <span id="auth-submit-label">Log In</span>
+            </button>
+            <button id="auth-close-btn" class="btn-ghost" type="button">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal (replaces window.confirm) -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="confirm-card">
+            <i class="fa-solid fa-triangle-exclamation confirm-icon"></i>
+            <h4 id="confirm-title">Delete this vault?</h4>
+            <p id="confirm-message" class="confirm-message">This action can't be undone.</p>
+            <div class="confirm-actions">
+                <button id="confirm-cancel-btn" class="btn-ghost" type="button">Cancel</button>
+                <button id="confirm-ok-btn" class="btn-danger" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Your Ideas Modal -->
+    <div id="ideas-modal" class="modal-overlay hidden">
+        <div class="auth-card ideas-card">
+            <button id="ideas-close-x" class="modal-close-x" aria-label="Close" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header">
+                <i class="fa-solid fa-lightbulb auth-header-icon"></i>
+                <h3>Share Your Ideas</h3>
+                <p class="auth-subheading">Tell us what you'd like to see added to VoidedX next.</p>
+            </div>
+
+            <div class="panel-group">
+                <label class="panel-label" for="ideas-name">YOUR NAME (OPTIONAL)</label>
+                <input type="text" id="ideas-name" class="input-field" maxlength="40" placeholder="Anonymous" autocomplete="off">
+            </div>
+
+            <div class="panel-group">
+                <label class="panel-label" for="ideas-text">YOUR IDEA</label>
+                <textarea id="ideas-text" class="input-field ideas-textarea" maxlength="1000" rows="5" placeholder="e.g. A public script browser, dark/light themes, Discord bot integration..." spellcheck="true"></textarea>
+                <span class="field-error hidden" id="ideas-error"></span>
+                <span class="field-hint ideas-count" id="ideas-count">0 / 1000</span>
+            </div>
+
+            <button id="ideas-submit-btn" class="btn-primary" type="button">
+                <span id="ideas-submit-label"><i class="fa-solid fa-paper-plane"></i> Send Idea</span>
+            </button>
+            <button id="ideas-cancel-btn" class="btn-ghost" type="button">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

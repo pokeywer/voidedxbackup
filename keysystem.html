@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoidedX // Key System</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1505057249528749" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="shell">
+        <div class="promo-banner">
+            <i class="fa-solid fa-rocket promo-icon"></i>
+            <span><strong>VoidedX Script Vault</strong> — Fast, Free & Secure Roblox Script Hosting & Key System! Share your scripts safely.</span>
+            <a href="/" class="btn-promo"><i class="fa-solid fa-plus"></i> Create a Vault</a>
+        </div>
+        <header class="top-nav">
+            <a href="/" class="brand-unit brand-unit-link">
+                <img src="logo.png" alt="VoidedX" class="brand-icon-img">
+                <div class="brand-titles">
+                    <span class="brand-name">VOIDEDX</span>
+                    <span class="brand-tag">FREE</span>
+                </div>
+            </a>
+            <a href="/" class="btn-ghost ks-back-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+        </header>
+
+        <div class="ks-page-wrap">
+            <div id="ks-loading" class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading vault…</p></div>
+            <div id="ks-error" class="info-box text-red hidden"><p id="ks-error-text">Vault not found.</p></div>
+
+            <div id="ks-content" class="hidden">
+                <div class="ks-page-header">
+                    <h1><i class="fa-solid fa-key text-cyan"></i> Key System Manager</h1>
+                    <p id="ks-vault-title" class="ks-vault-title">Untitled Vault</p>
+                    <label class="toggle-row keysystem-enable-row">
+                        <span>Enable Key System</span>
+                        <input type="checkbox" id="chk-key-system">
+                        <span class="switch"></span>
+                    </label>
+                </div>
+
+                <details class="ks-tutorial">
+                    <summary><i class="fa-solid fa-graduation-cap text-cyan"></i> Beginner guide — set up your key system</summary>
+                    <ol>
+                        <li><strong>Turn it on.</strong> Switch on <em>Enable Key System</em> to show the key settings.</li>
+                        <li><strong>Choose who gets keys.</strong> Add a Private Key for people you choose, or enable Public Key so visitors can request one from your Get-Key page.</li>
+                        <li><strong>Set the timer.</strong> Choose how long a key lasts and how many players may use it. Expired keys are rejected; the remaining time is shown in the in-game status badge.</li>
+                        <li><strong>Set up the in-game popup.</strong> Turn on <em>In-Game Key GUI</em> to ask players for a key in Roblox. Customize the title, colors, and button, then use the live-preview controls to replay the entrance, unlock, Get-Key, and close/open animations. After a key verifies, VoidedX saves it locally when the executor supports file saving, and checks it automatically next run.</li>
+                        <li><strong>Optional Linkvertise.</strong> In the Get-Key Link tab, copy the Get-Key URL. Make that the destination of a Linkvertise Target Link with Anti-Bypass enabled. Save your Linkvertise token, paste the Linkvertise share URL into Ad-Gate Link, then Apply Changes.</li>
+                        <li><strong>Save your settings.</strong> Click <em>Apply Changes</em> after editing. Share the Get-Key URL with players who need a public key.</li>
+                    </ol>
+                    <p class="ks-tutorial-note">Saved keys stay in the player's executor files on that device. The server still checks each key and expiration. Expiration blocks future runs; it cannot stop a script that is already running.</p>
+                </details>
+
+                <div id="key-system-fields" class="hidden">
+                    <div class="ks-tabs">
+                        <button type="button" class="ks-tab active" data-tab="keys"><i class="fa-solid fa-key"></i> Keys <span id="keys-count-badge" class="keysystem-badge on hidden">0</span></button>
+                        <button type="button" class="ks-tab" data-tab="security"><i class="fa-solid fa-shield-halved"></i> Security</button>
+                        <button type="button" class="ks-tab" data-tab="share"><i class="fa-solid fa-share-nodes"></i> Get-Key Link</button>
+                    </div>
+
+                    <div class="ks-tab-panel" data-panel="keys">
+                        <div class="panel-group">
+                            <label class="panel-label"><i class="fa-solid fa-globe text-cyan"></i> PUBLIC KEY</label>
+                            <label class="toggle-row">
+                                <span>Enable Public Key</span>
+                                <input type="checkbox" id="chk-public-key">
+                                <span class="switch"></span>
+                            </label>
+                            <div id="public-key-fields" class="hidden">
+                                <div class="info-box">
+                                    <i class="fa-solid fa-circle-info text-cyan"></i>
+                                    <p>Auto-generated — you can't type your own public key. Visitors get it from the Get-Key link after an optional ad step and a short wait, enforced by the server so it can't be skipped.</p>
+                                </div>
+                                <label class="panel-label" style="display:block;">DURATION</label>
+                                <select id="public-duration-select" class="input-field">
+                                    <option value="permanent">Permanent — never expires</option>
+                                    <option value="1">1 Day</option>
+                                    <option value="3">3 Days</option>
+                                    <option value="7">7 Days</option>
+                                    <option value="14">14 Days</option>
+                                    <option value="30">30 Days</option>
+                                    <option value="custom">Custom…</option>
+                                </select>
+                                <input type="number" id="public-duration-custom" class="input-field hidden" min="1" placeholder="Number of days" style="margin-top:6px;">
+
+                                <label class="panel-label" style="margin-top:8px; display:block;">PLAYERS ALLOWED</label>
+                                <div class="key-input-row">
+                                    <input type="number" id="public-maxusers-input" class="input-field" min="1" value="1">
+                                    <label class="toggle-row key-unlimited-row">
+                                        <span>Unlimited</span>
+                                        <input type="checkbox" id="public-unlimited-toggle">
+                                        <span class="switch"></span>
+                                    </label>
+                                </div>
+
+                                <label class="panel-label" style="margin-top:8px; display:block;">AD-GATE LINK (OPTIONAL)</label>
+                                <input type="text" id="public-adgate-input" class="input-field" placeholder="Your Linkvertise share URL (leave blank for no ad step)" autocomplete="off">
+                                <div class="info-box linkvertise-help">
+                                    <i class="fa-solid fa-circle-info text-cyan"></i>
+                                    <p>Create a Linkvertise <strong>Target Link</strong> whose destination is your Get-Key URL, then enable Linkvertise Anti-Bypass for Target Links. Paste the share URL above. Paste Links are not supported for completion verification. If Linkvertise stalls, visitors can use a recovery button after 60 seconds; recovery keys are not counted as verified ad completions.</p>
+                                </div>
+                                <label class="panel-label" style="margin-top:4px; display:block;">LINKVERTISE ANTI-BYPASS TOKEN</label>
+                                <div class="key-input-row">
+                                    <input type="password" id="linkvertise-token-input" class="input-field" placeholder="64-character token from Linkvertise" autocomplete="new-password">
+                                    <button type="button" id="save-linkvertise-token-btn" class="btn-accent"><i class="fa-solid fa-lock"></i> Save</button>
+                                </div>
+                                <p id="linkvertise-token-status" class="key-card-status">Verification token not saved.</p>
+
+                                <div class="key-toolbar" id="public-key-actions">
+                                    <span class="key-toolbar-label">ACTIONS</span>
+                                    <div class="key-toolbar-buttons">
+                                        <button type="button" id="public-regenerate-btn" class="key-tool-btn" title="Force Regenerate"><i class="fa-solid fa-rotate"></i></button>
+                                        <button type="button" id="public-terminate-btn" class="key-tool-btn" title="Terminate"><i class="fa-solid fa-ban"></i></button>
+                                    </div>
+                                </div>
+                                <p id="public-key-status" class="key-card-status"></p>
+                            </div>
+                        </div>
+
+                        <div class="panel-group">
+                            <label class="panel-label"><i class="fa-solid fa-user-lock text-cyan"></i> PRIVATE / WHITELIST KEYS</label>
+                            <div id="keys-list" class="keys-list"></div>
+                            <button type="button" id="add-key-btn" class="btn-ghost btn-new-vault"><i class="fa-solid fa-plus"></i> Add Private Key</button>
+                        </div>
+
+                        <div class="panel-group">
+                            <label class="panel-label">DELIVERY METHOD</label>
+                            <label class="toggle-row">
+                                <span><i class="fa-solid fa-gamepad text-cyan"></i> In-Game Key GUI (popup asks for the key)</span>
+                                <input type="checkbox" id="chk-gui-mode">
+                                <span class="switch"></span>
+                            </label>
+                            <div class="info-box">
+                                <i class="fa-solid fa-circle-info text-cyan"></i>
+                                <p><strong>On:</strong> the loadstring has no key in it — a popup appears in-game (PC and mobile) asking the player to type their key. <strong>Off:</strong> the key is baked into the loadstring URL itself.</p>
+                            </div>
+                            <div id="gui-customizer" class="gui-customizer hidden">
+                                <div class="gui-template-picker">
+                                    <div class="gui-template-heading">
+                                        <div>
+                                            <span class="panel-label">READY-MADE THEMES</span>
+                                            <span id="gui-template-selected" class="gui-template-selected">Custom</span>
+                                        </div>
+                                        <span id="gui-template-count" class="gui-template-count">14 looks</span>
+                                    </div>
+                                    <p class="gui-template-copy">Choose a complete color style, then fine-tune its text and colors below.</p>
+                                    <div id="gui-template-grid" class="gui-template-grid" role="group" aria-label="In-game key system themes"></div>
+                                </div>
+                                <div class="gui-customizer-fields">
+                                    <label class="gui-setting">
+                                        <span>Popup title</span>
+                                        <input type="text" id="gui-title-input" class="input-field" maxlength="40" placeholder="VoidedX Key System">
+                                    </label>
+                                    <label class="gui-setting">
+                                        <span>Subtitle</span>
+                                        <input type="text" id="gui-subtitle-input" class="input-field" maxlength="64" placeholder="Enter your key to continue">
+                                    </label>
+                                    <label class="gui-setting">
+                                        <span>Button text</span>
+                                        <input type="text" id="gui-button-input" class="input-field" maxlength="20" placeholder="Submit">
+                                    </label>
+                                    <label class="gui-setting gui-color-setting">
+                                        <span>Accent</span>
+                                        <input type="color" id="gui-accent-color" value="#06b6d4" aria-label="Popup accent color">
+                                    </label>
+                                    <label class="gui-setting gui-color-setting">
+                                        <span>Glow</span>
+                                        <input type="color" id="gui-secondary-color" value="#6366f1" aria-label="Popup glow color">
+                                    </label>
+                                    <label class="gui-setting gui-color-setting">
+                                        <span>Panel</span>
+                                        <input type="color" id="gui-background-color" value="#0b0d12" aria-label="Popup panel color">
+                                    </label>
+                                    <label class="gui-setting gui-color-setting">
+                                        <span>Text</span>
+                                        <input type="color" id="gui-text-color" value="#f8fafc" aria-label="Popup text color">
+                                    </label>
+                                </div>
+                                <div class="gui-preview-wrap">
+                                    <div class="gui-preview-heading">
+                                        <span class="panel-label">LIVE PREVIEW</span>
+                                        <span class="gui-preview-note">Controls below are simulations</span>
+                                    </div>
+                                    <div class="gui-preview-screen" id="gui-preview-screen">
+                                        <div class="gui-preview-card is-entering" id="gui-preview-card">
+                                            <div class="gui-preview-accent" id="gui-preview-accent"></div>
+                                            <button type="button" class="gui-preview-close" id="gui-preview-close" aria-label="Close popup preview">×</button>
+                                            <div class="gui-preview-header">
+                                                <div class="gui-preview-badge" id="gui-preview-badge">🔑</div>
+                                                <div class="gui-preview-title-group">
+                                                    <small class="gui-preview-eyebrow">SECURE KEY ACCESS</small>
+                                                    <strong id="gui-preview-title">VoidedX Key System</strong>
+                                                    <span id="gui-preview-subtitle">Enter your key to continue</span>
+                                                </div>
+                                            </div>
+                                            <div class="gui-preview-vault-pill"><i></i><small class="gui-preview-vault-name" id="gui-preview-vault-name">Vault: --</small></div>
+                                            <small class="gui-preview-key-label">ACCESS KEY</small>
+                                            <div class="gui-preview-input" id="gui-preview-input">Enter key here...</div>
+                                            <button type="button" class="gui-preview-button" id="gui-preview-button"><span id="gui-preview-button-text">Submit</span><b>→</b></button>
+                                            <button type="button" class="gui-preview-getkey" id="gui-preview-getkey">↗ &nbsp; Need a key? Get one here</button>
+                                            <div class="gui-preview-status" id="gui-preview-status" aria-live="polite"></div>
+                                            <small class="gui-preview-footer">KEY VERIFICATION · VOIDEDX</small>
+                                        </div>
+                                        <div class="gui-preview-timer hidden" id="gui-preview-timer"><small>KEY UNLOCKED</small><strong>Saved on this device</strong><span>Expires in 23h 59m</span></div>
+                                        <button type="button" class="gui-preview-closed hidden" id="gui-preview-closed"><i class="fa-solid fa-window-maximize"></i><strong>Popup closed</strong><span>Tap to open it again.</span></button>
+                                    </div>
+                                    <div class="gui-preview-controls" role="group" aria-label="Preview in-game GUI animations">
+                                        <button type="button" class="gui-preview-control" data-gui-preview-action="entrance"><i class="fa-solid fa-play"></i> Replay intro</button>
+                                        <button type="button" class="gui-preview-control" data-gui-preview-action="unlock"><i class="fa-solid fa-lock-open"></i> Unlock</button>
+                                        <button type="button" class="gui-preview-control" data-gui-preview-action="getkey"><i class="fa-solid fa-key"></i> Need a key</button>
+                                        <button type="button" class="gui-preview-control" id="gui-preview-toggle" data-gui-preview-action="toggle"><i class="fa-solid fa-xmark"></i> Close popup</button>
+                                    </div>
+                                    <p class="gui-preview-hint">Try the entrance, unlock, Get-Key, and close/open animations. This preview is visual only; it does not verify or copy a real key.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ks-tab-panel hidden" data-panel="security">
+                        <div class="panel-group">
+                            <label class="panel-label">IP LOCK</label>
+                            <label class="toggle-row">
+                                <span><i class="fa-solid fa-location-dot text-cyan"></i> Lock Key to First IP</span>
+                                <input type="checkbox" id="chk-ip-lock">
+                                <span class="switch"></span>
+                            </label>
+                            <div id="ip-lock-status" class="info-box hidden">
+                                <i class="fa-solid fa-circle-info text-cyan"></i>
+                                <p id="ip-lock-status-text">Not bound to any IP yet — the next person to use this key locks it in.</p>
+                            </div>
+                            <button type="button" id="reset-ip-btn" class="btn-ghost hidden"><i class="fa-solid fa-eraser"></i> Reset Bound IP</button>
+                            <div class="info-box">
+                                <i class="fa-solid fa-triangle-exclamation text-red"></i>
+                                <p>People on shared/mobile networks can have changing IPs, which can lock out a legitimate user by accident — use Reset if that happens. Applies across all keys on this vault.</p>
+                            </div>
+                        </div>
+
+                        <div class="panel-group">
+                            <label class="panel-label">BANNED USERS <span class="keysystem-badge on hidden" id="banned-count-badge">0</span></label>
+                            <div class="info-box">
+                                <i class="fa-solid fa-circle-info text-cyan"></i>
+                                <p>Banning blocks a Roblox account from using <strong>any</strong> key on this vault. Only takes effect where the vault can see who's playing (account-bound or in-game GUI keys).</p>
+                            </div>
+                            <div id="banned-users-list" class="manage-user-list"></div>
+                            <div class="key-input-row">
+                                <input type="text" id="manual-ban-userid" class="input-field" placeholder="Roblox UserId to ban">
+                                <select id="manual-ban-duration" class="input-field" style="max-width:140px;">
+                                    <option value="1">1 Day</option>
+                                    <option value="7">7 Days</option>
+                                    <option value="30">30 Days</option>
+                                    <option value="permanent">Permanent</option>
+                                </select>
+                                <button type="button" id="manual-ban-btn" class="btn-danger"><i class="fa-solid fa-gavel"></i> Ban</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ks-tab-panel hidden" data-panel="share">
+                        <div class="panel-group">
+                            <label class="panel-label">GET-KEY LINK</label>
+                            <div class="copy-input">
+                                <input type="text" id="keysystem-get-key-output" readonly placeholder="Save this vault to generate a link">
+                                <button type="button" id="keysystem-copy-key-link-btn" class="btn-accent"><i class="fa-solid fa-copy"></i> Copy</button>
+                            </div>
+                            <div class="info-box">
+                                <i class="fa-solid fa-circle-info text-cyan"></i>
+                                <p>Use this URL as the Linkvertise Target Link destination and enable Anti-Bypass for Target Links. After visitors finish the ad step, Linkvertise returns them here with a one-time proof that VoidedX verifies. Private keys are never listed on this page.</p>
+                            </div>
+                        </div>
+                        <div id="keysystem-status" class="info-box keysystem-status"></div>
+                    </div>
+                </div>
+
+                <div class="ks-page-actions">
+                    <button id="keysystem-apply-btn" class="btn-primary"><i class="fa-solid fa-check"></i> Apply Changes</button>
+                    <a href="/" class="btn-ghost">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Template for one key row -->
+    <template id="key-row-template">
+        <div class="key-card">
+            <div class="key-card-header">
+                <input type="text" class="input-field key-priority-input" title="Priority (1 = shown first)" style="max-width:52px; text-align:center; flex-shrink:0;" inputmode="numeric">
+                <input type="text" class="input-field key-label-input" placeholder="Key label (e.g. Free, VIP)" autocomplete="off">
+                <button type="button" class="btn-danger key-delete-btn" title="Delete this key"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <div class="key-input-row">
+                <input type="text" class="input-field key-value-input" autocomplete="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');">
+                <button type="button" class="btn-accent key-generate-btn" title="Generate a random key"><i class="fa-solid fa-dice"></i></button>
+            </div>
+
+            <div class="key-toolbar">
+                <span class="key-toolbar-label">ACTIONS</span>
+                <div class="key-toolbar-buttons">
+                    <button type="button" class="key-tool-btn key-extend-btn" title="Extend Time"><i class="fa-solid fa-clock"></i></button>
+                    <button type="button" class="key-tool-btn key-regenerate-btn" title="Regenerate"><i class="fa-solid fa-rotate"></i></button>
+                    <button type="button" class="key-tool-btn key-terminate-btn" title="Terminate"><i class="fa-solid fa-ban"></i></button>
+                </div>
+            </div>
+
+            <label class="panel-label" style="margin-top:8px; display:block;">DURATION</label>
+            <select class="input-field key-duration-select">
+                <option value="permanent">Permanent — never expires</option>
+                <option value="1">1 Day</option>
+                <option value="3">3 Days</option>
+                <option value="7">7 Days</option>
+                <option value="14">14 Days</option>
+                <option value="30">30 Days</option>
+                <option value="custom">Custom…</option>
+            </select>
+            <input type="number" class="input-field key-duration-custom" min="1" placeholder="Number of days" style="margin-top:6px;">
+
+            <label class="panel-label" style="margin-top:8px; display:block;">PLAYERS ALLOWED</label>
+            <div class="key-input-row">
+                <input type="number" class="input-field key-maxusers-input" min="1" value="1">
+                <label class="toggle-row key-unlimited-row">
+                    <span>Unlimited</span>
+                    <input type="checkbox" class="key-unlimited-toggle">
+                    <span class="switch"></span>
+                </label>
+            </div>
+
+            <p class="key-card-status"></p>
+
+            <div class="key-bound-users-list"></div>
+        </div>
+    </template>
+
+    <script type="module" src="keysystem.js"></script>
+</body>
+</html>

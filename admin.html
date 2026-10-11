@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>VoidedX Admin</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-page">
+    <main class="admin-shell">
+        <header class="admin-topbar">
+            <a class="brand-unit admin-brand" href="/">
+                <img src="logo.png" alt="" class="brand-icon-img">
+                <span class="brand-titles"><span class="brand-name">VOIDEDX</span><span class="brand-tag">ADMIN</span></span>
+            </a>
+            <a href="/" class="btn-ghost admin-back-link"><i class="fa-solid fa-arrow-left"></i> Back to site</a>
+        </header>
+
+        <section id="admin-login-view" class="admin-card admin-login-card">
+            <div class="auth-header">
+                <i class="fa-solid fa-shield-halved auth-header-icon"></i>
+                <h1>Administrator sign in</h1>
+                <p class="auth-subheading">Use the private admin credentials configured for this Vercel project.</p>
+            </div>
+            <div id="admin-login-error" class="auth-banner error hidden" role="alert"></div>
+            <label class="panel-label" for="admin-username">USERNAME</label>
+            <input id="admin-username" class="input-field" autocomplete="username" maxlength="80" required>
+            <label class="panel-label" for="admin-password">PASSWORD</label>
+            <input id="admin-password" class="input-field" type="password" autocomplete="current-password" maxlength="200" required>
+            <button id="admin-login-btn" class="btn-primary" type="button"><i class="fa-solid fa-right-to-bracket"></i> Sign in</button>
+            <p class="admin-security-note"><i class="fa-solid fa-lock"></i> Login is rate-limited. Your password is checked on the server and is never stored in this page.</p>
+        </section>
+
+        <section id="admin-dashboard-view" class="admin-dashboard hidden">
+            <div class="admin-heading-row">
+                <div>
+                    <p class="admin-eyebrow">CONTROL CENTER</p>
+                    <h1>VoidedX Admin</h1>
+                    <p class="admin-subtitle">Manage announcements, review community ideas, and check site activity.</p>
+                </div>
+                <div class="admin-heading-actions">
+                    <button id="admin-refresh-btn" class="btn-ghost admin-action-btn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                    <button id="admin-logout-btn" class="btn-ghost admin-action-btn" type="button"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+                </div>
+            </div>
+
+            <div id="admin-status" class="admin-status hidden" role="status" aria-live="polite"></div>
+
+            <div class="admin-stat-grid">
+                <article class="admin-stat-card"><i class="fa-solid fa-vault"></i><span>Total vaults</span><strong id="admin-stat-vaults">—</strong></article>
+                <article class="admin-stat-card"><i class="fa-solid fa-play"></i><span>Tracked executions</span><strong id="admin-stat-executions">—</strong></article>
+                <article class="admin-stat-card"><i class="fa-solid fa-lightbulb"></i><span>Ideas submitted</span><strong id="admin-stat-ideas">—</strong></article>
+            </div>
+
+            <div class="admin-content-grid">
+                <section class="admin-card admin-announcement-card">
+                    <div class="admin-section-heading">
+                        <div><p class="admin-eyebrow">SITE MESSAGE</p><h2><i class="fa-solid fa-bullhorn"></i> Announcement</h2></div>
+                        <span id="announcement-state" class="admin-state-pill">No active message</span>
+                    </div>
+                    <p class="admin-help">Publish one message banner at the top of the main page. Keep it short and useful.</p>
+                    <label class="panel-label" for="announcement-title">TITLE</label>
+                    <input id="announcement-title" class="input-field" maxlength="80" placeholder="Example: Maintenance tonight">
+                    <label class="panel-label" for="announcement-message">MESSAGE</label>
+                    <textarea id="announcement-message" class="input-field admin-textarea" rows="4" maxlength="500" placeholder="Write an update for VoidedX visitors"></textarea>
+                    <div class="admin-form-row">
+                        <div class="admin-form-field">
+                            <label class="panel-label" for="announcement-kind">STYLE</label>
+                            <select id="announcement-kind" class="input-field"><option value="info">Information</option><option value="success">Success</option><option value="warning">Warning</option></select>
+                        </div>
+                        <div class="admin-form-field">
+                            <label class="panel-label" for="announcement-link-label">BUTTON LABEL</label>
+                            <input id="announcement-link-label" class="input-field" maxlength="32" placeholder="Learn more">
+                        </div>
+                    </div>
+                    <label class="panel-label" for="announcement-link">OPTIONAL LINK</label>
+                    <input id="announcement-link" class="input-field" type="url" maxlength="500" placeholder="https://example.com">
+                    <div class="admin-form-actions">
+                        <button id="announcement-publish-btn" class="btn-primary" type="button"><i class="fa-solid fa-paper-plane"></i> Publish announcement</button>
+                        <button id="announcement-clear-btn" class="btn-danger" type="button"><i class="fa-solid fa-trash"></i> Remove</button>
+                    </div>
+                </section>
+
+                <section class="admin-card admin-ideas-card">
+                    <div class="admin-section-heading">
+                        <div><p class="admin-eyebrow">COMMUNITY</p><h2><i class="fa-solid fa-lightbulb"></i> Feature ideas</h2></div>
+                        <span id="admin-ideas-count" class="admin-state-pill">Loading…</span>
+                    </div>
+                    <p class="admin-help">Review suggestions sent through the Share Your Ideas form.</p>
+                    <div id="admin-ideas-list" class="admin-ideas-list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading ideas…</p></div></div>
+                </section>
+            </div>
+
+            <section class="admin-card admin-script-review-card">
+                <div class="admin-section-heading">
+                    <div><p class="admin-eyebrow">SCRIPT LIBRARY</p><h2><i class="fa-solid fa-code-branch"></i> Community script review</h2></div>
+                    <span id="admin-script-review-count" class="admin-state-pill">Loading…</span>
+                </div>
+                <p class="admin-help">Read the description and source before approving. Approved scripts appear in the public library. Reported scripts can be hidden from visitors.</p>
+                <div class="admin-script-review-columns">
+                    <section><div class="admin-script-list-heading"><h3>Waiting for review</h3><span id="admin-script-pending-count" class="admin-state-pill">0</span></div><div id="admin-script-pending-list" class="admin-script-list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading submissions…</p></div></div></section>
+                    <section><div class="admin-script-list-heading"><h3>Reported by users</h3><span id="admin-script-reported-count" class="admin-state-pill">0</span></div><div id="admin-script-reported-list" class="admin-script-list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading reports…</p></div></div></section>
+                </div>
+            </section>
+        </section>
+    </main>
+    <script type="module" src="admin.js"></script>
+</body>
+</html>

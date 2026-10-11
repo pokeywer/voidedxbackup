@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="See the most executed VoidedX script vaults today, this month, and all time.">
+    <title>VoidedX // Leaderboard</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1505057249528749" crossorigin="anonymous"></script>
+    <style>
+        .leaderboard-shell { min-height: 100vh; display: flex; flex-direction: column; }
+        .leaderboard-nav { display: flex; align-items: center; gap: 10px; }
+        .leaderboard-main { width: min(1120px, 100%); margin: 0 auto; padding: clamp(20px, 5vw, 48px) clamp(14px, 4vw, 36px) 48px; }
+        .leaderboard-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+        .leaderboard-eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
+        .leaderboard-hero h1 { font-size: clamp(28px, 5vw, 42px); letter-spacing: -1.4px; line-height: 1.1; }
+        .leaderboard-hero p { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-top: 10px; max-width: 620px; }
+        .leaderboard-refresh { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .leaderboard-highlights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+        .leaderboard-activity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 22px; }
+        .activity-stat { min-width: 0; position: relative; overflow: hidden; padding: 17px 18px; border: 1px solid var(--border-color); border-radius: 12px; background: linear-gradient(145deg, var(--bg-panel), var(--bg-surface)); }
+        .activity-stat::after { content: ""; position: absolute; width: 90px; height: 90px; right: -28px; top: -38px; border-radius: 50%; background: rgba(6,182,212,.07); }
+        .activity-stat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .activity-stat-label { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .65px; text-transform: uppercase; }
+        .activity-stat-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; background: rgba(6,182,212,.1); color: var(--cyan); }
+        .activity-stat-value { display: block; color: var(--text-primary); font-size: 27px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+        .activity-stat-detail { display: block; color: var(--text-muted); margin-top: 7px; font-size: 10px; }
+        .activity-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,.55); }
+        .activity-footnote-details { margin: -11px 2px 22px; color: var(--text-muted); }
+        .activity-footnote-details > summary { display: none; }
+        .activity-footnote { color: var(--text-muted); font-size: 10px; line-height: 1.55; }
+        .leaderboard-highlight { min-width: 0; background: linear-gradient(145deg, var(--bg-panel), var(--bg-surface)); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
+        .leaderboard-highlight-label { display: block; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; margin-bottom: 9px; }
+        .leaderboard-highlight-title { display: block; overflow: hidden; color: var(--text-primary); font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+        .leaderboard-highlight-count { display: block; color: var(--cyan); font-size: 12px; margin-top: 5px; }
+        .leaderboard-card { overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: var(--shadow-md); }
+        .leaderboard-tabs { display: flex; gap: 6px; padding: 12px; border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,.015); }
+        .leaderboard-tab { border: 1px solid transparent; border-radius: 8px; padding: 9px 13px; color: var(--text-muted); background: transparent; cursor: pointer; font-size: 12px; font-weight: 800; }
+        .leaderboard-tab:hover { color: var(--text-primary); background: var(--bg-panel); }
+        .leaderboard-tab.active { color: var(--text-primary); background: var(--bg-panel); border-color: var(--border-color); box-shadow: inset 0 -2px var(--cyan); }
+        .leaderboard-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px 12px; }
+        .leaderboard-panel-head h2 { font-size: 15px; }
+        .leaderboard-panel-note, .leaderboard-entry-count { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+        .leaderboard-entry-count { white-space: nowrap; }
+        .leaderboard-table-wrap { overflow-x: auto; }
+        .leaderboard-table { border-collapse: collapse; width: 100%; min-width: 420px; }
+        .leaderboard-table th { color: var(--text-muted); font-size: 9px; font-weight: 800; letter-spacing: .9px; text-align: left; text-transform: uppercase; padding: 10px 20px; border-bottom: 1px solid var(--border-color); }
+        .leaderboard-table th:last-child, .leaderboard-table td:last-child { text-align: right; }
+        .leaderboard-table td { padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,.045); font-size: 12px; }
+        .leaderboard-table tr:last-child td { border-bottom: 0; }
+        .leaderboard-rank { width: 72px; color: var(--text-muted); font-family: var(--font-mono); }
+        .leaderboard-rank.top-one { color: #fbbf24; font-weight: 900; }
+        .leaderboard-rank.top-two { color: #cbd5e1; font-weight: 900; }
+        .leaderboard-rank.top-three { color: #d97706; font-weight: 900; }
+        .leaderboard-vault-title { max-width: 600px; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .leaderboard-executions { color: var(--cyan); font-variant-numeric: tabular-nums; font-weight: 900; }
+        .leaderboard-state { display: flex; min-height: 190px; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 28px; color: var(--text-muted); text-align: center; }
+        .leaderboard-state i { color: var(--cyan); font-size: 22px; }
+        .leaderboard-state strong { color: var(--text-primary); font-size: 13px; }
+        .leaderboard-state p { max-width: 440px; font-size: 11px; line-height: 1.55; }
+        .leaderboard-footnote { margin: 13px 2px 0; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
+        .leaderboard-link { color: var(--cyan); text-decoration: none; }
+        .leaderboard-link:hover { text-decoration: underline; }
+        @media (max-width: 720px) {
+            .leaderboard-main { padding: 18px 12px 32px; }
+            .leaderboard-hero { align-items: flex-start; flex-direction: column; gap: 13px; margin-bottom: 18px; }
+            .leaderboard-hero h1 { font-size: clamp(25px, 7vw, 34px); }
+            .leaderboard-hero p { margin-top: 7px; font-size: 12px; }
+            .leaderboard-hero .leaderboard-refresh { align-self: flex-start; }
+            .leaderboard-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+            .leaderboard-highlight { padding: 12px; }
+            .leaderboard-highlight:last-child { grid-column: 1 / -1; }
+            .leaderboard-highlight-title { font-size: 12px; }
+            .leaderboard-activity { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+            .activity-stat { padding: 12px; }
+            .activity-stat-top { align-items: flex-start; margin-bottom: 9px; }
+            .activity-stat-label { font-size: 9px; letter-spacing: .3px; }
+            .activity-stat-value { font-size: 23px; }
+            .activity-stat-detail { font-size: 9px; line-height: 1.4; }
+            .leaderboard-nav { gap: 6px; }
+            .leaderboard-nav .btn-ghost, .leaderboard-nav .btn-accent { width: auto; padding: 8px 10px; font-size: 11px; white-space: nowrap; }
+            .leaderboard-tabs { gap: 4px; padding: 8px; }
+            .leaderboard-tab { flex: 1; padding: 9px 5px; font-size: 11px; white-space: nowrap; }
+            .leaderboard-panel-head { align-items: flex-start; padding: 14px 12px 10px; }
+            .leaderboard-panel-head h2 { font-size: 13px; }
+            .leaderboard-entry-count { max-width: 95px; white-space: normal; text-align: right; font-size: 9px; }
+            .leaderboard-table { min-width: 0; table-layout: fixed; }
+            .leaderboard-table th { padding: 9px 8px; font-size: 8px; letter-spacing: .45px; }
+            .leaderboard-table td { padding: 11px 8px; font-size: 11px; }
+            .leaderboard-rank { width: 44px; }
+            .leaderboard-executions { white-space: nowrap; }
+            .leaderboard-state { min-height: 155px; padding: 20px 14px; }
+            .activity-footnote-details { margin: -5px 2px 16px; padding: 9px 10px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(17,20,28,.45); }
+            .activity-footnote-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #aab6ca; cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; }
+            .activity-footnote-details > summary::-webkit-details-marker { display: none; }
+            .activity-footnote-details[open] > summary { margin-bottom: 8px; }
+            .activity-footnote-details[open] > summary::after { transform: rotate(180deg); }
+            .activity-footnote-details > summary::after { content: "⌄"; color: var(--cyan); font-size: 15px; transition: transform .15s ease; }
+            .activity-footnote { font-size: 9px; }
+            .leaderboard-footnote { font-size: 9px; }
+            .top-nav { height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+        }
+        @media (max-width: 420px) {
+            .leaderboard-main { padding-left: 10px; padding-right: 10px; }
+            .leaderboard-nav .btn-ghost, .leaderboard-nav .btn-accent { padding: 8px; font-size: 10px; }
+            .leaderboard-table th, .leaderboard-table td { padding-left: 6px; padding-right: 6px; }
+            .leaderboard-rank { width: 38px; }
+            .leaderboard-highlights { gap: 7px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-shell">
+        <div class="promo-banner">
+            <i class="fa-solid fa-chart-line promo-icon"></i>
+            <span><strong>VoidedX Leaderboard</strong> — Discover the vaults with the most successful executions.</span>
+            <a href="/" class="btn-promo" aria-label="Create a vault"><i class="fa-solid fa-plus"></i> Create a Vault</a>
+        </div>
+        <header class="top-nav">
+            <a href="/" class="brand-unit brand-unit-link">
+                <img src="logo.png" alt="VoidedX" class="brand-icon-img">
+                <div class="brand-titles"><span class="brand-name">VOIDEDX</span><span class="brand-tag">LEADERBOARD</span></div>
+            </a>
+            <nav class="leaderboard-nav" aria-label="Main navigation">
+                <button type="button" id="refresh-board" class="btn-ghost leaderboard-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                <a href="/" class="btn-accent"><i class="fa-solid fa-house"></i> Home</a>
+            </nav>
+        </header>
+
+        <main class="leaderboard-main">
+            <section class="leaderboard-hero">
+                <div>
+                    <span class="leaderboard-eyebrow"><i class="fa-solid fa-ranking-star"></i> Community stats</span>
+                    <h1>Execution Leaderboard</h1>
+                    <p>See which vaults are being run the most. Switch between today, this month, and all time.</p>
+                </div>
+                <button type="button" id="hero-refresh" class="btn-ghost leaderboard-refresh"><i class="fa-solid fa-rotate"></i> Refresh rankings</button>
+            </section>
+
+            <section class="leaderboard-activity" aria-label="VoidedX usage today" aria-live="polite">
+                <article class="activity-stat">
+                    <div class="activity-stat-top"><span class="activity-stat-label"><span class="activity-live-dot"></span>Active users today</span><span class="activity-stat-icon"><i class="fa-solid fa-users"></i></span></div>
+                    <strong id="active-users-today" class="activity-stat-value">—</strong>
+                    <span class="activity-stat-detail">Unique player IDs seen by a successful loader</span>
+                </article>
+                <article class="activity-stat">
+                    <div class="activity-stat-top"><span class="activity-stat-label">Script loads today</span><span class="activity-stat-icon"><i class="fa-solid fa-play"></i></span></div>
+                    <strong id="executions-today" class="activity-stat-value">—</strong>
+                    <span class="activity-stat-detail">Vault code delivered after loader checks</span>
+                </article>
+                <article class="activity-stat">
+                    <div class="activity-stat-top"><span class="activity-stat-label">Vaults used today</span><span class="activity-stat-icon"><i class="fa-solid fa-vault"></i></span></div>
+                    <strong id="active-vaults-today" class="activity-stat-value">—</strong>
+                    <span class="activity-stat-detail">Different vaults with a successful run</span>
+                </article>
+            </section>
+            <details class="activity-footnote-details" id="activity-count-note" open>
+                <summary>How today’s activity is counted</summary>
+                <p class="activity-footnote">“Active users” counts distinct Roblox UserIds reported by loader requests today. IDs are supplied by the client and are not independently verified, so this is a usage estimate—not proof of unique people. Load counts mean code was delivered after loader checks; they cannot confirm that code finished running in Roblox. Tracking starts after deployment, and older keyless loadstrings may need to be copied again to report a player ID.</p>
+            </details>
+
+            <section class="leaderboard-highlights" aria-label="Top vault highlights">
+                <article class="leaderboard-highlight">
+                    <span class="leaderboard-highlight-label">All-time leader</span>
+                    <strong id="highlight-overall-title" class="leaderboard-highlight-title">Loading…</strong>
+                    <span id="highlight-overall-count" class="leaderboard-highlight-count"></span>
+                </article>
+                <article class="leaderboard-highlight">
+                    <span class="leaderboard-highlight-label">This month’s leader</span>
+                    <strong id="highlight-month-title" class="leaderboard-highlight-title">Loading…</strong>
+                    <span id="highlight-month-count" class="leaderboard-highlight-count"></span>
+                </article>
+                <article class="leaderboard-highlight">
+                    <span class="leaderboard-highlight-label">Today’s leader</span>
+                    <strong id="highlight-today-title" class="leaderboard-highlight-title">Loading…</strong>
+                    <span id="highlight-today-count" class="leaderboard-highlight-count"></span>
+                </article>
+            </section>
+
+            <section class="leaderboard-card" aria-label="Execution rankings">
+                <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard period">
+                    <button type="button" class="leaderboard-tab" data-period="today" role="tab" aria-selected="false">Today</button>
+                    <button type="button" class="leaderboard-tab" data-period="month" role="tab" aria-selected="false">This month</button>
+                    <button type="button" class="leaderboard-tab active" data-period="overall" role="tab" aria-selected="true">All time</button>
+                </div>
+                <div class="leaderboard-panel-head">
+                    <div><h2 id="period-title">All-time rankings</h2><p id="period-note" class="leaderboard-panel-note">Lifetime execution totals</p></div>
+                    <span id="entry-count" class="leaderboard-entry-count"></span>
+                </div>
+                <div id="leaderboard-content" class="leaderboard-state" aria-live="polite">
+                    <i class="fa-solid fa-spinner fa-spin"></i><strong>Loading rankings…</strong>
+                </div>
+            </section>
+            <p class="leaderboard-footnote">Only vaults with more than zero executions are shown. Today and monthly counts use UTC and start from the moment leaderboard tracking is deployed. All-time ranks use each vault’s saved execution total.</p>
+        </main>
+    </div>
+
+    <script>
+        const content = document.getElementById('leaderboard-content');
+        const tabs = [...document.querySelectorAll('.leaderboard-tab')];
+        const numberFormat = new Intl.NumberFormat();
+        let board = null;
+        let activePeriod = 'overall';
+        if (window.matchMedia('(max-width: 720px)').matches) {
+            document.getElementById('activity-count-note').open = false;
+        }
+
+        function showState(icon, title, detail = '') {
+            content.replaceChildren();
+            const iconEl = document.createElement('i');
+            iconEl.className = icon;
+            const titleEl = document.createElement('strong');
+            titleEl.textContent = title;
+            content.append(iconEl, titleEl);
+            if (detail) {
+                const detailEl = document.createElement('p');
+                detailEl.textContent = detail;
+                content.append(detailEl);
+            }
+        }
+
+        function setHighlight(period, rows) {
+            const titleEl = document.getElementById(`highlight-${period}-title`);
+            const countEl = document.getElementById(`highlight-${period}-count`);
+            const top = rows.find((row) => Number(row.executions) > 0);
+            titleEl.textContent = top ? top.title : 'No executions yet';
+            countEl.textContent = top ? `${numberFormat.format(top.executions)} executions` : 'Positive counts appear here';
+        }
+
+        function renderPeriod() {
+            if (!board) return;
+            const titles = { today: 'Today’s rankings', month: 'This month’s rankings', overall: 'All-time rankings' };
+            document.getElementById('period-title').textContent = titles[activePeriod];
+            if (activePeriod === 'today') {
+                document.getElementById('period-note').textContent = `Today · ${board.today} UTC`;
+            } else if (activePeriod === 'month') {
+                document.getElementById('period-note').textContent = `Month · ${board.month} UTC`;
+            } else {
+                document.getElementById('period-note').textContent = 'Lifetime execution totals';
+            }
+
+            const rankingKey = activePeriod === 'overall' ? 'overall' : activePeriod;
+            const rows = (board.rankings[rankingKey] || []).filter((row) => Number(row.executions) > 0);
+            document.getElementById('entry-count').textContent = `${rows.length} ranked vault${rows.length === 1 ? '' : 's'}`;
+            if (!rows.length) {
+                showState('fa-solid fa-chart-simple', 'No executions recorded yet', activePeriod === 'overall'
+                    ? 'Vaults will appear here after a successful execution.'
+                    : 'This period has no successful executions yet. Zero-count vaults are left out.');
+                return;
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'leaderboard-table-wrap';
+            const table = document.createElement('table');
+            table.className = 'leaderboard-table';
+            const head = document.createElement('thead');
+            head.innerHTML = '<tr><th scope="col">Rank</th><th scope="col">Vault</th><th scope="col">Executions</th></tr>';
+            const body = document.createElement('tbody');
+
+            rows.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const rank = document.createElement('td');
+                rank.className = `leaderboard-rank ${index < 3 ? `top-${['one', 'two', 'three'][index]}` : ''}`;
+                rank.textContent = `#${index + 1}`;
+                const title = document.createElement('td');
+                title.className = 'leaderboard-vault-title';
+                title.textContent = row.title || 'Untitled Vault';
+                const executions = document.createElement('td');
+                executions.className = 'leaderboard-executions';
+                executions.textContent = numberFormat.format(Number(row.executions));
+                tr.append(rank, title, executions);
+                body.append(tr);
+            });
+
+            table.append(head, body);
+            wrap.append(table);
+            content.replaceChildren(wrap);
+        }
+
+        async function loadBoard() {
+            const buttons = [document.getElementById('refresh-board'), document.getElementById('hero-refresh')];
+            buttons.forEach((button) => { button.disabled = true; button.classList.add('is-loading'); });
+            if (!board) showState('fa-solid fa-spinner fa-spin', 'Loading rankings…');
+            try {
+                const response = await fetch('/api/leaderboard');
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error(result.message || 'Unable to load the leaderboard.');
+                board = result;
+                document.getElementById('active-users-today').textContent = numberFormat.format(Number(result.activity?.activeUsersToday) || 0);
+                document.getElementById('executions-today').textContent = numberFormat.format(Number(result.activity?.executionsToday) || 0);
+                document.getElementById('active-vaults-today').textContent = numberFormat.format(Number(result.activity?.activeVaultsToday) || 0);
+                setHighlight('overall', result.rankings.overall || []);
+                setHighlight('month', result.rankings.month || []);
+                setHighlight('today', result.rankings.today || []);
+                renderPeriod();
+            } catch (error) {
+                showState('fa-solid fa-circle-exclamation', 'Could not load the leaderboard', error.message || 'Please try again in a moment.');
+            } finally {
+                buttons.forEach((button) => { button.disabled = false; button.classList.remove('is-loading'); });
+            }
+        }
+
+        tabs.forEach((tab) => tab.addEventListener('click', () => {
+            activePeriod = tab.dataset.period;
+            tabs.forEach((item) => {
+                const selected = item === tab;
+                item.classList.toggle('active', selected);
+                item.setAttribute('aria-selected', String(selected));
+            });
+            renderPeriod();
+        }));
+
+        document.getElementById('refresh-board').addEventListener('click', loadBoard);
+        document.getElementById('hero-refresh').addEventListener('click', loadBoard);
+        loadBoard();
+        setInterval(loadBoard, 60000);
+    </script>
+</body>
+</html>

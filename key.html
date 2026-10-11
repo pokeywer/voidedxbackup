@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoidedX // Get Key</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1505057249528749" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="shell">
+        <div class="promo-banner">
+            <i class="fa-solid fa-rocket promo-icon"></i>
+            <span><strong>VoidedX Script Vault</strong> — Fast, Free & Secure Roblox Script Hosting & Key System! Share your scripts safely.</span>
+            <a href="/" class="btn-promo"><i class="fa-solid fa-plus"></i> Create a Vault</a>
+        </div>
+        <header class="top-nav">
+            <a href="/" class="brand-unit brand-unit-link">
+                <img src="logo.png" alt="VoidedX" class="brand-icon-img">
+                <div class="brand-titles">
+                    <span class="brand-name">VOIDEDX</span>
+                    <span class="brand-tag">FREE</span>
+                </div>
+            </a>
+        </header>
+
+        <div class="flex-center">
+        <div class="vault-visitor-stack keys-page-stack">
+
+            <!-- Loading -->
+            <div id="loading-state" class="secured-card">
+                <div class="shield-badge"><i class="fa-solid fa-spinner fa-spin text-cyan"></i></div>
+                <h2>Loading…</h2>
+                <p>Looking up this vault's key page.</p>
+            </div>
+
+            <!-- Not found / no key system -->
+            <div id="error-state" class="secured-card hidden">
+                <div class="shield-badge"><i class="fa-solid fa-triangle-exclamation text-red"></i></div>
+                <h2>Key Page Unavailable</h2>
+                <p id="error-message">This vault doesn't exist or doesn't use a key system.</p>
+            </div>
+
+            <!-- Get Key cards -->
+            <div id="getkey-state" class="hidden keys-page-wrap">
+                <div class="secured-card keys-page-header">
+                    <div class="shield-badge"><i class="fa-solid fa-key text-cyan"></i></div>
+                    <h2 id="getkey-title">Get Your Key</h2>
+                    <p>Pick a key below, then paste the loadstring into your executor.</p>
+                </div>
+                <div id="keys-cards-list" class="keys-cards-list"></div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Template for one key card -->
+    <template id="key-page-card-template">
+        <div class="secured-card key-page-card">
+            <h3 class="key-page-card-title"><i class="fa-solid fa-key text-cyan"></i> <span class="key-page-label">Key</span></h3>
+
+            <div class="adgate-step">
+                <p class="adgate-text">Complete the Linkvertise step. It will return you here automatically; VoidedX checks the completion before starting the 15-second timer. If Linkvertise gets stuck, return here and a skip option appears after 60 seconds.</p>
+                <a class="btn-accent adgate-link" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Linkvertise</a>
+                <button type="button" class="btn-ghost adgate-bypass-btn hidden"><i class="fa-solid fa-forward"></i> Skip ad and continue</button>
+            </div>
+
+            <div class="key-generate-block idle-block">
+                <button type="button" class="btn-primary get-key-btn"><i class="fa-solid fa-key"></i> Get Key</button>
+            </div>
+
+            <div class="key-generate-block loading-block hidden">
+                <div class="key-progress-track"><div class="key-progress-fill"></div></div>
+                <p class="key-progress-label">Verifying…</p>
+            </div>
+
+            <div class="key-ready-block hidden">
+                <div class="protection-tags">
+                    <span class="rotation-tag hidden"><i class="fa-solid fa-rotate"></i></span>
+                    <span class="expiry-tag hidden"><i class="fa-solid fa-clock"></i> <span class="expiry-text">--</span></span>
+                </div>
+                <p class="key-onetime-note hidden">This key was issued for one verified Linkvertise completion. Copy and save it now; the same completion link cannot issue it again.</p>
+                <div class="loadstring-box">
+                    <label>Your Key:</label>
+                    <div class="copy-input">
+                        <input type="text" class="key-output" readonly>
+                        <button type="button" class="btn-accent copy-key-btn"><i class="fa-solid fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+                <div class="loadstring-box">
+                    <label>Loadstring (paste into your executor):</label>
+                    <div class="copy-input">
+                        <input type="text" class="loadstring-output" readonly>
+                        <button type="button" class="btn-accent copy-ls-btn"><i class="fa-solid fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+                <a href="#" class="btn-ghost key-open-link open-vault-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Vault Page</a>
+            </div>
+        </div>
+    </template>
+
+    <script type="module">
+
+
+        const HOUR_MS = 60 * 60 * 1000;
+
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+        const getkeyState = document.getElementById('getkey-state');
+        const getkeyTitle = document.getElementById('getkey-title');
+        const keysCardsList = document.getElementById('keys-cards-list');
+        const cardTemplate = document.getElementById('key-page-card-template');
+
+        function showOnly(el) {
+            [loadingState, errorState, getkeyState].forEach(s => s.classList.add('hidden'));
+            el.classList.remove('hidden');
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const icons = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type]} toast-icon"></i><span>${message}</span><button class="toast-close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>`;
+            const remove = () => { toast.classList.add('leaving'); setTimeout(() => toast.remove(), 200); };
+            toast.querySelector('.toast-close').addEventListener('click', remove);
+            container.appendChild(toast);
+            if (duration > 0) setTimeout(remove, duration);
+        }
+
+        function generateRandomKey() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let out = 'VX-';
+            for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+            return out;
+        }
+
+        // Only allow http(s) links as ad-gate targets — blocks javascript: URI injection
+        // and similar schemes from ever becoming a clickable href.
+        function isSafeUrl(url) {
+            if (!url || typeof url !== 'string') return false;
+            try {
+                const parsed = new URL(url, window.location.origin);
+                return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
+        function getVaultKeys(data) {
+            if (Array.isArray(data.keys) && data.keys.length > 0) return data.keys;
+            if (data.requireKey && data.key) {
+                return [{
+                    id: 'k_legacy', label: 'Main Key', key: data.key, priority: 1,
+                    durationDays: null, keyGeneratedAt: data.keyGeneratedAt || null,
+                    maxUsersUnlimited: true, terminated: false, adGateUrl: '', visibility: 'public'
+                }];
+            }
+            return [];
+        }
+
+        function formatCountdown(msLeft) {
+            if (msLeft <= 0) return 'expired';
+            const d = Math.floor(msLeft / 86400000);
+            const h = Math.floor((msLeft % 86400000) / 3600000);
+            return d > 0 ? `Expires in ${d}d ${h}h` : `Expires in ${h}h`;
+        }
+
+        function buildLoadstring(id, key) {
+            return `loadstring(game:HttpGet("${window.location.origin}/api/raw?id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}"))()`;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const vaultId = urlParams.get('id');
+
+        async function loadVault() {
+            if (!vaultId) {
+                errorMessage.textContent = 'No vault ID was provided in the link.';
+                showOnly(errorState);
+                return;
+            }
+            try {
+                const r = await fetch(`/api/keypage?id=${encodeURIComponent(vaultId)}`);
+                const data = await r.json();
+                if (!data.ok) {
+                    errorMessage.textContent = data.message || 'Something went wrong loading this vault.';
+                    showOnly(errorState);
+                    return;
+                }
+                if (!data.requireKey) {
+                    errorMessage.textContent = "This vault doesn't use a key system — no key is needed to run it.";
+                    showOnly(errorState);
+                    return;
+                }
+                if (!data.publicKey) {
+                    errorMessage.textContent = "This vault's keys are private/whitelist-only. Contact the owner directly.";
+                    showOnly(errorState);
+                    return;
+                }
+                getkeyTitle.innerHTML = `Get Your Key — <span class="text-cyan">${escapeHtml(data.title || 'Untitled Vault')}</span>`;
+                keysCardsList.innerHTML = '';
+                buildKeyCard(data.publicKey);
+                showOnly(getkeyState);
+            } catch (err) {
+                errorMessage.textContent = 'Something went wrong loading this vault.';
+                showOnly(errorState);
+            }
+        }
+
+        function buildKeyCard(keyDef) {
+            const node = cardTemplate.content.firstElementChild.cloneNode(true);
+
+            const labelEl = node.querySelector('.key-page-label');
+            const adgateStep = node.querySelector('.adgate-step');
+            const adgateText = node.querySelector('.adgate-text');
+            const adgateLink = node.querySelector('.adgate-link');
+            const adgateBypassBtn = node.querySelector('.adgate-bypass-btn');
+            const idleBlock = node.querySelector('.idle-block');
+            const loadingBlock = node.querySelector('.loading-block');
+            const progressFill = node.querySelector('.key-progress-fill');
+            const progressLabel = node.querySelector('.key-progress-label');
+            const readyBlock = node.querySelector('.key-ready-block');
+            const oneTimeNote = node.querySelector('.key-onetime-note');
+            const fallbackStorageKey = `voidedx:adgate-started:${vaultId}`;
+            let fallbackTimeout = null;
+            const getKeyBtn = node.querySelector('.get-key-btn');
+            const rotationTag = node.querySelector('.rotation-tag');
+            const expiryTag = node.querySelector('.expiry-tag');
+            const expiryText = node.querySelector('.expiry-text');
+            const keyOutput = node.querySelector('.key-output');
+            const copyKeyBtn = node.querySelector('.copy-key-btn');
+            const loadstringOutput = node.querySelector('.loadstring-output');
+            const copyLsBtn = node.querySelector('.copy-ls-btn');
+            const openVaultLink = node.querySelector('.open-vault-link');
+
+            labelEl.textContent = keyDef.label || 'Public Key';
+            if (!keyDef.durationDays) {
+                rotationTag.innerHTML = `<i class="fa-solid fa-infinity"></i> Permanent`;
+                rotationTag.classList.remove('hidden');
+            }
+
+            let revealStarted = false;
+            function runCountdown(startResp) {
+                const waitMs = startResp.waitMs || 15000;
+                const startedAt = Date.now();
+
+                const tick = setInterval(() => {
+                    const elapsed = Date.now() - startedAt;
+                    const pct = Math.min(100, (elapsed / waitMs) * 100);
+                    progressFill.style.width = pct + '%';
+                    const secsLeft = Math.max(0, Math.ceil((waitMs - elapsed) / 1000));
+                    progressLabel.textContent = secsLeft > 0 ? `Please wait ${secsLeft}s…` : 'Almost there…';
+                    if (elapsed >= waitMs) {
+                        clearInterval(tick);
+                        claimKey(startResp.token);
+                    }
+                }, 100);
+            }
+
+            async function beginReveal(bypassAdGate = false) {
+                if (revealStarted) return;
+                revealStarted = true;
+                idleBlock.classList.add('hidden');
+                adgateStep.classList.add('hidden');
+                loadingBlock.classList.remove('hidden');
+                progressFill.style.width = '0%';
+
+                let startResp;
+                try {
+                    const bypassParam = bypassAdGate ? '&bypass=1' : '';
+                    const r = await fetch(`/api/keypage?id=${encodeURIComponent(vaultId)}&action=start${bypassParam}`);
+                    startResp = await r.json();
+                } catch (e) { startResp = { ok: false }; }
+
+                if (!startResp.ok) {
+                    revealStarted = false;
+                    loadingBlock.classList.add('hidden');
+                    idleBlock.classList.remove('hidden');
+                    showToast(startResp.message || 'Could not start — try again.', 'error');
+                    return;
+                }
+
+                runCountdown(startResp);
+            }
+
+            function clearFallbackMarker() {
+                if (fallbackTimeout) clearTimeout(fallbackTimeout);
+                fallbackTimeout = null;
+                adgateBypassBtn.classList.add('hidden');
+                try { localStorage.removeItem(fallbackStorageKey); } catch (e) {}
+            }
+
+            function scheduleFallbackButton() {
+                let startedAt = 0;
+                try { startedAt = Number(localStorage.getItem(fallbackStorageKey)) || 0; } catch (e) {}
+                if (!startedAt || Date.now() - startedAt > 60 * 60 * 1000) {
+                    try { localStorage.removeItem(fallbackStorageKey); } catch (e) {}
+                    return;
+                }
+                const delay = Math.max(0, 60 * 1000 - (Date.now() - startedAt));
+                if (fallbackTimeout) clearTimeout(fallbackTimeout);
+                fallbackTimeout = setTimeout(() => {
+                    if (!revealStarted) adgateBypassBtn.classList.remove('hidden');
+                }, delay);
+            }
+
+            async function verifyLinkvertiseReturn(hash) {
+                if (revealStarted) return;
+                revealStarted = true;
+                idleBlock.classList.add('hidden');
+                adgateStep.classList.add('hidden');
+                loadingBlock.classList.remove('hidden');
+                progressFill.style.width = '0%';
+                progressLabel.textContent = 'Checking Linkvertise completion…';
+
+                let verifyResp;
+                try {
+                    const r = await fetch(`/api/keypage?id=${encodeURIComponent(vaultId)}&action=verify`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hash })
+                    });
+                    verifyResp = await r.json();
+                } catch (e) { verifyResp = { ok: false }; }
+
+                if (!verifyResp.ok) {
+                    revealStarted = false;
+                    loadingBlock.classList.add('hidden');
+                    adgateStep.classList.remove('hidden');
+                    showToast(verifyResp.message || 'Linkvertise could not be verified. Please try again.', 'error', 6000);
+                    return;
+                }
+
+                clearFallbackMarker();
+                runCountdown(verifyResp);
+            }
+
+            async function claimKey(token) {
+                progressLabel.textContent = 'Getting your key…';
+                let d;
+                try {
+                    const r = await fetch(`/api/keypage?id=${encodeURIComponent(vaultId)}&action=claim&token=${encodeURIComponent(token)}`);
+                    d = await r.json();
+                } catch (e) { d = { ok: false }; }
+
+                if (!d.ok) {
+                    revealStarted = false;
+                    loadingBlock.classList.add('hidden');
+                    if (isSafeUrl(keyDef.adGateUrl)) adgateStep.classList.remove('hidden');
+                    else idleBlock.classList.remove('hidden');
+                    showToast(d.message || 'Could not get a key. Try again.', 'error', 5000);
+                    return;
+                }
+
+                keyOutput.value = d.key;
+                loadstringOutput.value = buildLoadstring(vaultId, d.key);
+                openVaultLink.href = `/vault.html?id=${encodeURIComponent(vaultId)}&key=${encodeURIComponent(d.key)}`;
+                if (d.bypassed) clearFallbackMarker();
+                oneTimeNote.classList.toggle('hidden', !d.unique);
+                if (d.bypassed) {
+                    oneTimeNote.textContent = 'This fallback key was issued without a confirmed Linkvertise completion. Copy and save it now; this fallback request cannot issue another key.';
+                } else {
+                    oneTimeNote.textContent = 'This key was issued for one verified Linkvertise completion. Copy and save it now; the same completion cannot issue it again.';
+                }
+
+                if (d.expiresAt) {
+                    expiryTag.classList.remove('hidden');
+                    expiryText.textContent = formatCountdown(d.expiresAt - Date.now());
+                }
+
+                loadingBlock.classList.add('hidden');
+                readyBlock.classList.remove('hidden');
+                showToast('Key ready — copy it below.', 'success', 2500);
+            }
+
+            if (isSafeUrl(keyDef.adGateUrl)) {
+                adgateStep.classList.remove('hidden');
+                idleBlock.classList.add('hidden');
+                if (keyDef.linkvertiseConfigured) {
+                    adgateLink.href = keyDef.adGateUrl;
+                    adgateLink.addEventListener('click', () => {
+                        try { localStorage.setItem(fallbackStorageKey, String(Date.now())); } catch (e) {}
+                        scheduleFallbackButton();
+                    });
+                    adgateBypassBtn.addEventListener('click', () => beginReveal(true));
+                    scheduleFallbackButton();
+                } else {
+                    adgateLink.classList.add('hidden');
+                    adgateText.textContent = 'The owner has not finished setting up Linkvertise verification yet. Please contact them.';
+                }
+            } else {
+                adgateStep.classList.add('hidden');
+                getKeyBtn.addEventListener('click', beginReveal);
+            }
+
+            copyKeyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(keyOutput.value);
+                copyKeyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                showToast('Key copied to clipboard.', 'success', 2000);
+                setTimeout(() => copyKeyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy', 2000);
+            });
+            copyLsBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(loadstringOutput.value);
+                copyLsBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                showToast('Loadstring copied to clipboard.', 'success', 2000);
+                setTimeout(() => copyLsBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy', 2000);
+            });
+
+            keysCardsList.appendChild(node);
+
+            const returnedHash = urlParams.get('hash');
+            if (returnedHash) {
+                window.history.replaceState(null, document.title, `${window.location.pathname}?id=${encodeURIComponent(vaultId)}`);
+                if (isSafeUrl(keyDef.adGateUrl) && keyDef.linkvertiseConfigured) {
+                    verifyLinkvertiseReturn(returnedHash);
+                } else {
+                    showToast('This page is not configured to verify a Linkvertise return.', 'error', 6000);
+                }
+            }
+        }
+
+                loadVault();
+    </script>
+</body>
+</html>

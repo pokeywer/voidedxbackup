@@ -1,0 +1,10 @@
+{
+  "name": "voidedx",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase": "^10.13.0",
+    "firebase-admin": "^12.6.0"
+  }
+}
