@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoidedX // Script Vault</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="icon" type="image/png" sizes="240x240" href="/voidedx-favicon.png?v=2">
+    <link rel="shortcut icon" type="image/png" href="/voidedx-favicon.png?v=2">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1505057249528749" crossorigin="anonymous"></script>
@@ -105,13 +106,18 @@
                     </div>
                     <div class="toggle-list">
                         <label class="toggle-row">
+                            <span class="toggle-label-stack"><span>Lua obfuscation</span><small>Medium · Fixed</small></span>
+                            <input type="checkbox" id="chk-obfuscation">
+                            <span class="switch"></span>
+                        </label>
+                        <label class="toggle-row">
                             <span>Auto .txt Local Backup</span>
                             <input type="checkbox" id="chk-backup" checked>
                             <span class="switch"></span>
                         </label>
                     </div>
+                    <p class="obfuscation-note">When enabled, the editor keeps your readable source while executions receive compact code with quoted strings encoded.</p>
                     <button type="button" id="backup-now-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-download"></i> Download backup now</button>
-                    <button type="button" id="open-obfuscator-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-user-secret"></i> Obfuscate script</button>
                     <div class="protection-hint">
                         <i class="fa-solid fa-shield-halved"></i>
                         <span>Use the Key System Manager to gate access. Anyone who can run a script can inspect its delivered code, so never include passwords or private API keys.</span>
@@ -272,24 +278,6 @@
             </button>
             <button id="ideas-cancel-btn" class="btn-ghost" type="button">Cancel</button>
         </div>
-    </div>
-
-    <!-- Lua obfuscator modal -->
-    <div id="obfuscator-modal" class="modal-overlay hidden obfuscator-modal" role="dialog" aria-modal="true" aria-labelledby="obfuscator-title">
-        <section class="obfuscator-card">
-            <header class="obfuscator-modal-header">
-                <div>
-                    <h2 id="obfuscator-title"><i class="fa-solid fa-user-secret text-cyan"></i> Lua Obfuscator</h2>
-                    <p>Obfuscation runs in this browser. Your script is not uploaded.</p>
-                </div>
-                <div class="obfuscator-modal-actions">
-                    <button type="button" id="apply-obfuscated-code-btn" class="btn-primary" disabled><i class="fa-solid fa-check"></i> Apply output to editor</button>
-                    <button type="button" id="close-obfuscator-btn" class="icon-button" aria-label="Close Lua obfuscator"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            </header>
-            <iframe id="obfuscator-frame" class="obfuscator-frame" title="Lua Obfuscator" loading="lazy"></iframe>
-            <footer class="obfuscator-attribution">Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">https://github.com/prometheus-lua/Prometheus</a></footer>
-        </section>
     </div>
 
     <!-- Toasts -->

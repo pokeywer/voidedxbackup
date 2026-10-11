@@ -281,12 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const getKeyOutput = document.getElementById('get-key-output');
     const copyKeyLinkBtn = document.getElementById('copy-key-link-btn');
     const chkBackup = document.getElementById('chk-backup');
+    const chkObfuscation = document.getElementById('chk-obfuscation');
     const backupNowBtn = document.getElementById('backup-now-btn');
-    const openObfuscatorBtn = document.getElementById('open-obfuscator-btn');
-    const obfuscatorModal = document.getElementById('obfuscator-modal');
-    const obfuscatorFrame = document.getElementById('obfuscator-frame');
-    const closeObfuscatorBtn = document.getElementById('close-obfuscator-btn');
-    const applyObfuscatedCodeBtn = document.getElementById('apply-obfuscated-code-btn');
     const protectionKeyStatus = document.getElementById('protection-key-status');
     const openKeysystemBtn = document.getElementById('open-keysystem-btn');
     const keysystemStatusBadge = document.getElementById('keysystem-status-badge');
@@ -826,6 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeVaultId.value = id;
         scriptTitle.value = data.title || '';
         sourceCode.value = data.code || '';
+        if (chkObfuscation) chkObfuscation.checked = data.obfuscationEnabled === true;
         setEditorDirty(false);
         setProtectionKeyStatus(!!data.requireKey);
         updateLineNumbers();
@@ -1140,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearFieldError(scriptTitle, titleError);
         setEditorDirty(true);
     });
+    if (chkObfuscation) chkObfuscation.addEventListener('change', () => setEditorDirty(true));
 
     if (backupNowBtn) {
         backupNowBtn.addEventListener('click', () => {
@@ -1155,103 +1153,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showToast('The browser could not start the backup download.', 'error');
             }
-        });
-    }
-
-    let obfuscatorSyncTimer = null;
-    let obfuscatorApplyTimer = null;
-    let obfuscatorSession = 0;
-
-    function getObfuscatorEditors() {
-        try {
-            return obfuscatorFrame.contentWindow.__voidedxCodeEditors || null;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    function replaceObfuscatorEditorText(editor, value) {
-        if (!editor) return false;
-        editor.dispatch({
-            changes: { from: 0, to: editor.state.doc.length, insert: value }
-        });
-        return true;
-    }
-
-    function closeObfuscator() {
-        obfuscatorModal.classList.add('hidden');
-        if (obfuscatorSyncTimer) clearTimeout(obfuscatorSyncTimer);
-        if (obfuscatorApplyTimer) clearInterval(obfuscatorApplyTimer);
-        obfuscatorSyncTimer = null;
-        obfuscatorApplyTimer = null;
-    }
-
-    function waitForObfuscatorEditors(session, source, attemptsLeft = 150) {
-        if (session !== obfuscatorSession || obfuscatorModal.classList.contains('hidden')) return;
-        const editors = getObfuscatorEditors();
-        if (editors && editors['Lua input'] && editors['Obfuscated output']) {
-            replaceObfuscatorEditorText(editors['Lua input'], source);
-            replaceObfuscatorEditorText(editors['Obfuscated output'], '');
-            applyObfuscatedCodeBtn.disabled = true;
-            if (obfuscatorApplyTimer) clearInterval(obfuscatorApplyTimer);
-            obfuscatorApplyTimer = setInterval(() => {
-                const currentEditors = getObfuscatorEditors();
-                const output = currentEditors?.['Obfuscated output']?.state.doc.toString() || '';
-                applyObfuscatedCodeBtn.disabled = !output.trim();
-            }, 300);
-            return;
-        }
-        if (attemptsLeft <= 0) {
-            showToast('The obfuscator did not finish loading. Upload the complete obfuscator folder and try again.', 'error', 7000);
-            return;
-        }
-        obfuscatorSyncTimer = setTimeout(() => waitForObfuscatorEditors(session, source, attemptsLeft - 1), 100);
-    }
-
-    if (openObfuscatorBtn && obfuscatorModal && obfuscatorFrame && applyObfuscatedCodeBtn) {
-        openObfuscatorBtn.addEventListener('click', () => {
-            const source = sourceCode.value;
-            if (!source.trim()) {
-                showToast('Paste a script into the editor before opening the obfuscator.', 'info');
-                sourceCode.focus();
-                return;
-            }
-
-            obfuscatorSession += 1;
-            const session = obfuscatorSession;
-            if (obfuscatorSyncTimer) clearTimeout(obfuscatorSyncTimer);
-            if (obfuscatorApplyTimer) clearInterval(obfuscatorApplyTimer);
-            obfuscatorSyncTimer = null;
-            obfuscatorApplyTimer = null;
-            applyObfuscatedCodeBtn.disabled = true;
-            obfuscatorModal.classList.remove('hidden');
-            if (!obfuscatorFrame.hasAttribute('src')) obfuscatorFrame.src = 'obfuscator/index.html?embed=1';
-            waitForObfuscatorEditors(session, source);
-        });
-
-        closeObfuscatorBtn?.addEventListener('click', closeObfuscator);
-        obfuscatorModal.addEventListener('click', (event) => {
-            if (event.target === obfuscatorModal) closeObfuscator();
-        });
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !obfuscatorModal.classList.contains('hidden')) closeObfuscator();
-        });
-        applyObfuscatedCodeBtn.addEventListener('click', () => {
-            const editors = getObfuscatorEditors();
-            const output = editors?.['Obfuscated output']?.state.doc.toString() || '';
-            if (!output.trim()) {
-                showToast('Obfuscate the script first, then apply the output.', 'info');
-                return;
-            }
-
-            const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
-            if (valueSetter) valueSetter.call(sourceCode, output);
-            else sourceCode.value = output;
-            sourceCode.dispatchEvent(new Event('input', { bubbles: true }));
-            sourceCode.focus();
-            sourceCode.setSelectionRange(0, 0);
-            closeObfuscator();
-            showToast('Obfuscated output applied. Save the vault to keep the change.', 'success');
         });
     }
 
@@ -1338,6 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: vaultId,
             title: title,
             code: code,
+            obfuscationEnabled: !!(chkObfuscation && chkObfuscation.checked),
             ...existingKeyFields,
             executions: currentExecutions,
             autoDeleteAt: currentExecutions === 0 ? Date.now() + ZERO_EXECUTION_VAULT_TTL_MS : null,
@@ -1403,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeVaultId.value = '';
         scriptTitle.value = '';
         sourceCode.value = '';
+        if (chkObfuscation) chkObfuscation.checked = false;
         setEditorDirty(false);
         setProtectionKeyStatus(false);
         updateLineNumbers();

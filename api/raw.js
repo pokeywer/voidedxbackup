@@ -1,6 +1,7 @@
 import { db } from './_admin.js';
 import { recordExecution, recordActiveUser } from './_executionStats.js';
 import { buildRemovedVaultGui } from './_removedVaultGui.js';
+import { obfuscateLuaMedium } from '../lua-medium.js';
 
 function isExecutorRequest(req) {
     const ua = (req.headers['user-agent'] || '').toLowerCase();
@@ -63,19 +64,21 @@ export default async function handler(req, res) {
             return res.status(200).send(buildGuiLoader(id, getOrigin(req), vaultData.guiAppearance, vaultData.title));
         }
 
+        const executionCode = getCodeForExecution(vaultData);
+
         res.setHeader('Content-Type', 'text/plain');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
         if (!vaultData.requireKey) {
-            if (typeof vaultData.code === 'string' && vaultData.code.trim()) {
+            if (typeof executionCode === 'string' && executionCode.trim()) {
                 try { await recordExecution(db.collection('vaults').doc(String(id)), id, vaultData.title, userId); } catch (e) {}
             }
-            if (typeof vaultData.code !== 'string' || !vaultData.code.trim()) {
-                return res.status(200).send(vaultData.code);
+            if (typeof executionCode !== 'string' || !executionCode.trim()) {
+                return res.status(200).send(executionCode);
             }
             const deliveredCode = userId
-                ? vaultData.code
-                : buildTrackedScript(id, getOrigin(req), vaultData.code);
+                ? executionCode
+                : buildTrackedScript(id, getOrigin(req), executionCode);
             return res.status(200).send(deliveredCode);
         }
 
@@ -92,6 +95,11 @@ error("[VoidedX] Invalid Key Provided!", 2)
     } catch (err) {
         return res.status(500).send(`Error loading script: ${err.message}`);
     }
+}
+
+function getCodeForExecution(vaultData) {
+    const source = typeof vaultData.code === 'string' ? vaultData.code : '';
+    return vaultData.obfuscationEnabled === true ? obfuscateLuaMedium(source) : source;
 }
 
 function buildKeyLoader(id, key, origin) {

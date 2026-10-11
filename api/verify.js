@@ -1,5 +1,6 @@
 import { db, FieldValue } from './_admin.js';
 import { recordExecution } from './_executionStats.js';
+import { obfuscateLuaMedium } from '../lua-medium.js';
 
 function json(res, status, body) {
     res.setHeader('Content-Type', 'application/json');
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
         const vault = vaultSnap.data();
 
         if (!vault.requireKey) {
-            return json(res, 200, { ok: true, code: vault.code });
+            return json(res, 200, { ok: true, code: getCodeForExecution(vault) });
         }
 
         const uidStr = userId ? String(userId) : null;
@@ -164,7 +165,7 @@ export default async function handler(req, res) {
                 const existing = boundUsers.find(u => String(u.userId) === uidStr);
 
                 if (existing) {
-                    return { ok: true, code: freshData.code, remainingSeconds, expiresAt: freshExpiresAt };
+                    return { ok: true, code: getCodeForExecution(freshData), remainingSeconds, expiresAt: freshExpiresAt };
                 }
                 if (!fk.maxUsersUnlimited && boundUsers.length >= (fk.maxUsers || 1)) {
                     return {
@@ -185,7 +186,7 @@ export default async function handler(req, res) {
                         tx.update(vaultRef, { keys: updatedKeys });
                     }
                 }
-                return { ok: true, code: freshData.code, remainingSeconds, expiresAt: freshExpiresAt };
+                return { ok: true, code: getCodeForExecution(freshData), remainingSeconds, expiresAt: freshExpiresAt };
             });
 
             if (!result.ok) {
@@ -197,8 +198,13 @@ export default async function handler(req, res) {
         }
 
         try { await recordExecution(vaultRef, id, vault.title, uidStr); } catch (e) {}
-        return json(res, 200, { ok: true, code: vault.code, remainingSeconds: initialRemainingSeconds, expiresAt: initialExpiresAt });
+        return json(res, 200, { ok: true, code: getCodeForExecution(vault), remainingSeconds: initialRemainingSeconds, expiresAt: initialExpiresAt });
     } catch (err) {
         return json(res, 500, { ok: false, message: 'Server error: ' + err.message });
     }
+}
+
+function getCodeForExecution(vaultData) {
+    const source = typeof vaultData.code === 'string' ? vaultData.code : '';
+    return vaultData.obfuscationEnabled === true ? obfuscateLuaMedium(source) : source;
 }

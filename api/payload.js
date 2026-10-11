@@ -1,4 +1,5 @@
 import { db, FieldValue } from './_admin.js';
+import { obfuscateLuaMedium } from '../lua-medium.js';
 
 const SESSION_TTL_MS = 60 * 1000;
 const MAX_USES = 3;
@@ -72,7 +73,10 @@ export default async function handler(req, res) {
         if (!vaultSnap.exists) return json(res, 404, { ok: false, message: 'Vault not found.' });
 
         const vault = vaultSnap.data();
-        if (typeof vault.code !== 'string') {
+        const executionCode = typeof vault.code === 'string'
+            ? (vault.obfuscationEnabled === true ? obfuscateLuaMedium(vault.code) : vault.code)
+            : null;
+        if (typeof executionCode !== 'string') {
             return json(res, 500, { ok: false, message: 'Vault payload is unavailable.' });
         }
 
@@ -80,7 +84,7 @@ export default async function handler(req, res) {
             ok: true,
             version: 2,
             encoding: 'xor-fnv-lcg-base64',
-            payload: protect(vault.code, sessionToken)
+            payload: protect(executionCode, sessionToken)
         });
     } catch (err) {
         return json(res, 500, { ok: false, message: 'Could not load protected payload.' });
