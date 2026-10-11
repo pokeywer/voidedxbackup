@@ -280,6 +280,7 @@ card.Position = UDim2.new(0.5, 0, 0.5, 0)
 card.Size = UDim2.new(0.9, 0, 0, 0)
 card.AutomaticSize = Enum.AutomaticSize.Y
 card.BackgroundColor3 = COL_BG
+card.BackgroundTransparency = 0
 card.BorderSizePixel = 0
 card.ClipsDescendants = false
 card.ZIndex = 2
@@ -298,14 +299,6 @@ cardStroke.Color = COL_CYAN
 cardStroke.Thickness = 1
 cardStroke.Transparency = 0.6
 cardStroke.Parent = card
-local cardGradient = Instance.new("UIGradient")
-cardGradient.Rotation = 90
-cardGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
-if BACKGROUND_ANIMATION ~= "none" then
-    cardGradient.Color = ColorSequence.new(COL_BG:Lerp(COL_CYAN, 0.08), COL_BG:Lerp(COL_ACCENT, 0.12))
-    cardGradient.Transparency = NumberSequence.new(0.86)
-end
-cardGradient.Parent = card
 local ambientGlows = {}
 if BACKGROUND_ANIMATION ~= "none" then
     local function makeAmbientGlow(name, color, position, size)
@@ -452,12 +445,6 @@ if BACKGROUND_ANIMATION ~= "none" then
                 TweenService:Create(cardStroke, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.24 }):Play()
             end
         end)
-    elseif BACKGROUND_ANIMATION == "comet" then
-        TweenService:Create(cardGradient, TweenInfo.new(4.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
-    elseif BACKGROUND_ANIMATION == "scanline" then
-        TweenService:Create(cardGradient, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
-    elseif BACKGROUND_ANIMATION == "shimmer" then
-        TweenService:Create(cardGradient, TweenInfo.new(9, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -360 }):Play()
     end
 end
 
@@ -465,11 +452,9 @@ local uiScale = Instance.new("UIScale")
 uiScale.Scale = 0.88
 uiScale.Parent = card
 card.Position = UDim2.new(0.5, 0, 0.5, 16)
-card.BackgroundTransparency = 1
 cardStroke.Transparency = 1
 TweenService:Create(uiScale, TweenInfo.new(0.48, EASE_BACK), { Scale = 1 }):Play()
 TweenService:Create(card, TweenInfo.new(0.42, EASE_OUT), {
-    BackgroundTransparency = 0,
     Position = UDim2.new(0.5, 0, 0.5, 0)
 }):Play()
 TweenService:Create(cardStroke, TweenInfo.new(0.38, EASE_OUT), { Transparency = 0.6 }):Play()
