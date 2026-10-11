@@ -50,7 +50,7 @@
                         <li><strong>Choose who gets keys.</strong> Add a Private Key for people you choose, or enable Public Key so visitors can request one from your Get-Key page.</li>
                         <li><strong>Set the timer.</strong> Choose how long a key lasts and how many players may use it. Expired keys are rejected; the remaining time is shown in the in-game status badge.</li>
                         <li><strong>Set up the in-game popup.</strong> Turn on <em>In-Game Key GUI</em> to ask players for a key in Roblox. Customize the title, colors, and button, then use the live-preview controls to replay the entrance, unlock, Get-Key, and close/open animations. After a key verifies, VoidedX saves it locally when the executor supports file saving, and checks it automatically next run.</li>
-                        <li><strong>Optional Linkvertise.</strong> In the Get-Key Link tab, copy the Get-Key URL. Make that the destination of a Linkvertise Target Link with Anti-Bypass enabled. Save your Linkvertise token, paste the Linkvertise share URL into Ad-Gate Link, then Apply Changes.</li>
+                        <li><strong>Optional custom link.</strong> Add your HTTPS unlock link below. Copy both links from the Get-Key Link tab: share the visitor link, then set the reward or return destination to the template that includes <code>{vx_ticket}</code>. Your link service must preserve that ticket and substitute it into the reward URL.</li>
                         <li><strong>Save your settings.</strong> Click <em>Apply Changes</em> after editing. Share the Get-Key URL with players who need a public key.</li>
                     </ol>
                     <p class="ks-tutorial-note">Saved keys stay in the player's executor files on that device. The server still checks each key and expiration. Expiration blocks future runs; it cannot stop a script that is already running.</p>
@@ -74,7 +74,7 @@
                             <div id="public-key-fields" class="hidden">
                                 <div class="info-box">
                                     <i class="fa-solid fa-circle-info text-cyan"></i>
-                                    <p>Auto-generated — you can't type your own public key. Visitors get it from the Get-Key link after an optional ad step and a short wait, enforced by the server so it can't be skipped.</p>
+                                    <p>Auto-generated — visitors request it from the Get-Key page. The optional custom link uses a server-issued, single-use return ticket; the short wait is enforced by the server.</p>
                                 </div>
                                 <label class="panel-label" style="display:block;">DURATION</label>
                                 <select id="public-duration-select" class="input-field">
@@ -98,18 +98,12 @@
                                     </label>
                                 </div>
 
-                                <label class="panel-label" style="margin-top:8px; display:block;">AD-GATE LINK (OPTIONAL)</label>
-                                <input type="text" id="public-adgate-input" class="input-field" placeholder="Your Linkvertise share URL (leave blank for no ad step)" autocomplete="off">
-                                <div class="info-box linkvertise-help">
+                                <label class="panel-label" style="margin-top:8px; display:block;">CUSTOM UNLOCK LINK (OPTIONAL)</label>
+                                <input type="url" id="public-custom-link-input" class="input-field" placeholder="https://your-custom-link.example/…" autocomplete="off">
+                                <div class="info-box custom-link-help">
                                     <i class="fa-solid fa-circle-info text-cyan"></i>
-                                    <p>Create a Linkvertise <strong>Target Link</strong> whose destination is your Get-Key URL, then enable Linkvertise Anti-Bypass for Target Links. Paste the share URL above. Paste Links are not supported for completion verification. If Linkvertise stalls, visitors can use a recovery button after 60 seconds; recovery keys are not counted as verified ad completions.</p>
+                                    <p>Visitors click <strong>Get Key</strong> to open this link. Configure its reward/return destination with the template in the next tab, passing the incoming <code>vx_ticket</code> value as the <code>ticket</code> query parameter. Each ticket is random, expires after 20 minutes, and can be redeemed once. Only HTTPS links are allowed; adult-content domains such as phub and known unsafe destinations are blocked.</p>
                                 </div>
-                                <label class="panel-label" style="margin-top:4px; display:block;">LINKVERTISE ANTI-BYPASS TOKEN</label>
-                                <div class="key-input-row">
-                                    <input type="password" id="linkvertise-token-input" class="input-field" placeholder="64-character token from Linkvertise" autocomplete="new-password">
-                                    <button type="button" id="save-linkvertise-token-btn" class="btn-accent"><i class="fa-solid fa-lock"></i> Save</button>
-                                </div>
-                                <p id="linkvertise-token-status" class="key-card-status">Verification token not saved.</p>
 
                                 <div class="key-toolbar" id="public-key-actions">
                                     <span class="key-toolbar-label">ACTIONS</span>
@@ -269,7 +263,16 @@
                             </div>
                             <div class="info-box">
                                 <i class="fa-solid fa-circle-info text-cyan"></i>
-                                <p>Use this URL as the Linkvertise Target Link destination and enable Anti-Bypass for Target Links. After visitors finish the ad step, Linkvertise returns them here with a one-time proof that VoidedX verifies. Private keys are never listed on this page.</p>
+                                <p>Share this visitor URL. When a custom link is set, visitors click its button and your link service should send them back through the one-time reward URL below. Private keys are never listed on these pages.</p>
+                            </div>
+                            <label class="panel-label" style="margin-top:12px; display:block;">ONE-TIME REWARD / RETURN URL</label>
+                            <div class="copy-input">
+                                <input type="text" id="keysystem-reward-output" readonly placeholder="Save this vault to generate a link">
+                                <button type="button" id="keysystem-copy-reward-btn" class="btn-accent"><i class="fa-solid fa-copy"></i> Copy</button>
+                            </div>
+                            <div class="info-box">
+                                <i class="fa-solid fa-shield-halved text-cyan"></i>
+                                <p>Set this as the reward destination and replace <code>{vx_ticket}</code> with the ticket passed to your custom link. A generic URL cannot confirm that an external task was completed; your link service must support passing through a per-visit value and redirecting back here.</p>
                             </div>
                         </div>
                         <div id="keysystem-status" class="info-box keysystem-status"></div>

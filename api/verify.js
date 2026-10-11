@@ -87,8 +87,8 @@ export default async function handler(req, res) {
         let matched = keysList.find(k => k.key === key);
         let issuedKeyRef = null;
 
-        // Linkvertise completions receive individual keys stored outside the
-        // main vault document, so look them up when no managed key matches.
+        // Keys issued through one-time custom-link tickets live separately
+        // from the main vault document, so look them up when needed.
         if (!matched) {
             const issuedSnap = await vaultRef.collection('issuedKeys').where('key', '==', key).limit(1).get();
             if (!issuedSnap.empty) {

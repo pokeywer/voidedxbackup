@@ -1,60 +1,82 @@
-import { db, FieldValue } from './_admin.js';
+import { db } from './_admin.js';
 import { randomBytes } from 'node:crypto';
-import { decryptLinkvertiseToken } from './_linkvertise.js';
+import { isSafeExternalUrl } from './_safeExternalUrl.js';
 
-// Public endpoint behind key.html.
-// - GET               -> vault info + public key settings (no key values, no private keys)
-// - GET ?action=start  -> begins a timed hold when no Linkvertise gate is configured
-// - POST ?action=verify -> verifies Linkvertise's one-time return hash, then starts the hold
-// - GET ?action=claim  -> issues the current public key after the server-side hold
-//
-// The wait is enforced using a timestamp stored server-side when the hold starts.
-// Nothing the browser sends is trusted for timing, so it can't be skipped by
-// editing the page's JavaScript.
+// Public endpoint behind key.html. Claims are stored as separate, random
+// Firestore documents and removed as soon as a key is issued.
 const WAIT_MS = 15000;
+const TICKET_TTL_MS = 20 * 60 * 1000;
 const PUBLIC_KEY_ID = 'k_public';
 
 function json(res, status, body) {
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.status(status).json(body);
 }
 
 function randomKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let out = 'VX-';
-    // The alphabet has 32 characters, so masking keeps each character unbiased.
     for (const byte of randomBytes(12)) out += chars[byte & 31];
     return out;
 }
 
+function configuredGate(cfg) {
+    return String((cfg && cfg.customLinkUrl) || '').trim();
+}
+
+function makeGateUrl(baseUrl, ticket) {
+    const url = new URL(baseUrl);
+    url.searchParams.set('vx_ticket', ticket);
+    return url.toString();
+}
+
 export default async function handler(req, res) {
-    const { id, action, token } = req.query;
+    const id = String(req.query.id || '');
+    const action = String(req.query.action || '');
+    const token = String(req.query.token || '');
     if (!id) return json(res, 400, { ok: false, message: 'Missing vault id.' });
 
-    const vaultRef = db.collection('vaults').doc(String(id));
+    const vaultRef = db.collection('vaults').doc(id);
 
     try {
         if (action === 'start') {
-            const bypassAdGate = String(req.query.bypass || '') === '1';
+            if (req.method !== 'GET') {
+                res.setHeader('Allow', 'GET');
+                return json(res, 405, { ok: false, message: 'Method not allowed.' });
+            }
             const snap = await vaultRef.get();
             if (!snap.exists) return json(res, 404, { ok: false, message: 'Vault not found.' });
             const v = snap.data();
-            if (!v.requireKey || !v.publicKeyConfig || !v.publicKeyConfig.enabled) {
+            const cfg = v.publicKeyConfig;
+            if (!v.requireKey || !cfg || !cfg.enabled) {
                 return json(res, 400, { ok: false, message: 'This vault has no public key to get.' });
             }
-            if (v.publicKeyConfig.adGateUrl && !bypassAdGate) {
-                return json(res, 403, { ok: false, message: 'Complete the Linkvertise link and return here before requesting a key.' });
+
+            const gateUrl = configuredGate(cfg);
+            if (gateUrl && !isSafeExternalUrl(gateUrl)) {
+                return json(res, 400, { ok: false, message: 'The owner’s custom link is blocked or invalid. Please contact the owner.' });
             }
-            if (bypassAdGate && !v.publicKeyConfig.adGateUrl) {
-                return json(res, 400, { ok: false, message: 'There is no Ad-Gate to bypass.' });
-            }
-            const claimToken = randomBytes(32).toString('hex');
-            const pendingClaim = bypassAdGate
-                ? { startedAt: Date.now(), linkvertiseBypassed: true }
-                : Date.now();
-            await vaultRef.set({ pendingClaims: { [claimToken]: pendingClaim } }, { merge: true });
-            return json(res, 200, { ok: true, token: claimToken, waitMs: WAIT_MS, bypassed: bypassAdGate });
+
+            const now = Date.now();
+            const expiredClaims = await vaultRef.collection('keyClaims').where('expiresAt', '<=', now).limit(25).get();
+            await Promise.all(expiredClaims.docs.map(doc => doc.ref.delete()));
+            const ticket = randomBytes(32).toString('hex');
+            await vaultRef.collection('keyClaims').doc(ticket).create({
+                status: gateUrl ? 'started' : 'ready',
+                gateUrl,
+                startedAt: now,
+                expiresAt: now + TICKET_TTL_MS
+            });
+
+            return json(res, 200, {
+                ok: true,
+                token: ticket,
+                waitMs: WAIT_MS,
+                expiresAt: now + TICKET_TTL_MS,
+                requiresReturn: !!gateUrl,
+                gateUrl: gateUrl ? makeGateUrl(gateUrl, ticket) : ''
+            });
         }
 
         if (action === 'verify') {
@@ -62,73 +84,71 @@ export default async function handler(req, res) {
                 res.setHeader('Allow', 'POST');
                 return json(res, 405, { ok: false, message: 'Method not allowed.' });
             }
-            const snap = await vaultRef.get();
-            if (!snap.exists) return json(res, 404, { ok: false, message: 'Vault not found.' });
-            const v = snap.data();
-            const cfg = v.publicKeyConfig;
-            if (!v.requireKey || !cfg || !cfg.enabled || !cfg.adGateUrl) {
-                return json(res, 400, { ok: false, message: 'This vault does not have a Linkvertise gate enabled.' });
+            const ticket = String((req.body && req.body.ticket) || '');
+            if (!/^[a-f0-9]{64}$/i.test(ticket)) {
+                return json(res, 400, { ok: false, message: 'The one-time return ticket is missing or invalid.' });
             }
 
-            const hash = String((req.body && req.body.hash) || '');
-            if (!/^[a-f0-9]{64}$/i.test(hash)) {
-                return json(res, 400, { ok: false, message: 'The Linkvertise return code is missing or invalid.' });
-            }
+            const claimRef = vaultRef.collection('keyClaims').doc(ticket);
+            const result = await db.runTransaction(async tx => {
+                const [vaultSnap, claimSnap] = await Promise.all([tx.get(vaultRef), tx.get(claimRef)]);
+                if (!vaultSnap.exists) return { ok: false, status: 404, message: 'Vault not found.' };
+                if (!claimSnap.exists) return { ok: false, status: 400, message: 'This return ticket was already used or has expired. Start again.' };
 
-            const credentialSnap = await db.collection('linkvertiseCredentials').doc(String(id)).get();
-            if (!credentialSnap.exists) {
-                return json(res, 403, { ok: false, message: 'The owner has not configured Linkvertise verification yet.' });
-            }
-            let linkvertiseToken;
-            try {
-                linkvertiseToken = decryptLinkvertiseToken(credentialSnap.data());
-            } catch {
-                return json(res, 503, { ok: false, message: 'Linkvertise verification is temporarily unavailable.' });
-            }
-            if (!linkvertiseToken) {
-                return json(res, 503, { ok: false, message: 'Linkvertise verification is temporarily unavailable.' });
-            }
+                const cfg = vaultSnap.data().publicKeyConfig;
+                const claim = claimSnap.data();
+                if (!vaultSnap.data().requireKey || !cfg || !cfg.enabled || !configuredGate(cfg) || configuredGate(cfg) !== claim.gateUrl) {
+                    return { ok: false, status: 403, message: 'The custom link changed. Start again from the Get-Key page.' };
+                }
+                if (claim.status !== 'started' || Date.now() >= claim.expiresAt) {
+                    return { ok: false, status: 400, message: 'This return ticket was already used or has expired. Start again.' };
+                }
+                if (!isSafeExternalUrl(claim.gateUrl)) {
+                    return { ok: false, status: 403, message: 'The owner’s custom link is blocked or invalid.' };
+                }
 
-            let verification;
-            try {
-                const verifyUrl = new URL('https://publisher.linkvertise.com/api/v1/anti_bypassing');
-                verifyUrl.searchParams.set('token', linkvertiseToken);
-                verifyUrl.searchParams.set('hash', hash);
-                const response = await fetch(verifyUrl, { method: 'POST' });
-                verification = response.ok ? (await response.text()).trim().toUpperCase() : '';
-            } catch {
-                return json(res, 502, { ok: false, message: 'Could not reach Linkvertise. Please return and try again.' });
-            }
-
-            if (verification !== 'TRUE') {
-                return json(res, 403, { ok: false, message: 'Linkvertise did not confirm this visit. Finish the target link and return again.' });
-            }
-
-            const claimToken = randomBytes(32).toString('hex');
-            await vaultRef.set({ pendingClaims: { [claimToken]: { startedAt: Date.now(), linkvertiseVerified: true } } }, { merge: true });
-            return json(res, 200, { ok: true, token: claimToken, waitMs: WAIT_MS });
+                const returnedAt = Date.now();
+                tx.update(claimRef, { status: 'returned', returnedAt });
+                return { ok: true, token: ticket, waitMs: WAIT_MS, expiresAt: claim.expiresAt };
+            });
+            return json(res, result.status || 200, result);
         }
 
         if (action === 'claim') {
-            if (!token) return json(res, 400, { ok: false, message: 'Missing token.' });
+            if (req.method !== 'GET') {
+                res.setHeader('Allow', 'GET');
+                return json(res, 405, { ok: false, message: 'Method not allowed.' });
+            }
+            if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
+                return json(res, 400, { ok: false, message: 'Missing or invalid one-time ticket.' });
+            }
 
-            const result = await db.runTransaction(async (tx) => {
-                const snap = await tx.get(vaultRef);
+            const claimRef = vaultRef.collection('keyClaims').doc(token);
+            const result = await db.runTransaction(async tx => {
+                const [snap, claimSnap] = await Promise.all([tx.get(vaultRef), tx.get(claimRef)]);
                 if (!snap.exists) return { ok: false, status: 404, message: 'Vault not found.' };
+                if (!claimSnap.exists) return { ok: false, status: 400, message: 'That request expired or was already used. Start again.' };
+
                 const v = snap.data();
                 const cfg = v.publicKeyConfig;
                 if (!v.requireKey || !cfg || !cfg.enabled) {
                     return { ok: false, status: 400, message: 'This vault has no public key to get.' };
                 }
-                const pendingClaim = v.pendingClaims && v.pendingClaims[token];
-                const issuedAt = typeof pendingClaim === 'number' ? pendingClaim : pendingClaim && pendingClaim.startedAt;
-                if (!issuedAt) {
-                    return { ok: false, status: 400, message: 'That request expired or is invalid. Start again.' };
+                const claim = claimSnap.data();
+                const gateUrl = configuredGate(cfg);
+                if (Date.now() >= claim.expiresAt || (gateUrl && gateUrl !== claim.gateUrl)) {
+                    tx.delete(claimRef);
+                    return { ok: false, status: 400, message: 'That request expired or the owner changed the custom link. Start again.' };
                 }
-                if (cfg && cfg.adGateUrl && !(pendingClaim && (pendingClaim.linkvertiseVerified || pendingClaim.linkvertiseBypassed))) {
-                    return { ok: false, status: 403, message: 'Complete the Linkvertise step before claiming this key.' };
+                if (gateUrl && claim.status !== 'returned') {
+                    return { ok: false, status: 403, message: 'Return through the owner’s reward link before claiming this key.' };
                 }
-                if (Date.now() - issuedAt < WAIT_MS) {
+                if (!gateUrl && claim.status !== 'ready') {
+                    return { ok: false, status: 403, message: 'Start again from the Get-Key page.' };
+                }
+
+                const startedAt = gateUrl ? claim.returnedAt : claim.startedAt;
+                if (!startedAt || Date.now() - startedAt < WAIT_MS) {
                     return { ok: false, status: 425, message: "Please wait — the timer isn't done yet." };
                 }
 
@@ -136,23 +156,23 @@ export default async function handler(req, res) {
                 const isLive = k => k && !k.terminated &&
                     !(k.durationDays && k.keyGeneratedAt && now >= k.keyGeneratedAt + k.durationDays * 86400000);
                 let activeKey;
-                const vaultUpdate = { [`pendingClaims.${token}`]: FieldValue.delete() };
 
-                // Verified ad visits and the explicit stuck-ad fallback each
-                // receive their own key; the claim token itself is consumed below.
-                const linkvertiseClaim = !!(pendingClaim && pendingClaim.linkvertiseVerified);
-                const bypassClaim = !!(pendingClaim && pendingClaim.linkvertiseBypassed);
-                const individualClaim = linkvertiseClaim || bypassClaim;
-                if (individualClaim) {
+                if (gateUrl) {
                     activeKey = {
-                        id: `k_lv_${randomBytes(16).toString('hex')}`,
-                        label: cfg.label || 'Public Key', key: randomKey(),
-                        priority: 0, durationDays: cfg.durationDays || null, keyGeneratedAt: now,
+                        id: `k_custom_${randomBytes(12).toString('hex')}`,
+                        label: cfg.label || 'Public Key',
+                        key: randomKey(),
+                        priority: 0,
+                        durationDays: cfg.durationDays || null,
+                        keyGeneratedAt: now,
                         maxUsers: cfg.maxUsersUnlimited ? 1 : Math.max(1, cfg.maxUsers || 1),
-                        maxUsersUnlimited: !!cfg.maxUsersUnlimited, boundUsers: [], terminated: false,
-                        adGateUrl: cfg.adGateUrl || '', visibility: 'public', autoGenerated: true,
-                        issuedByLinkvertise: linkvertiseClaim,
-                        issuedByFallbackBypass: bypassClaim
+                        maxUsersUnlimited: !!cfg.maxUsersUnlimited,
+                        boundUsers: [],
+                        terminated: false,
+                        customLinkUrl: gateUrl,
+                        visibility: 'public',
+                        autoGenerated: true,
+                        issuedByCustomGate: true
                     };
                     tx.set(vaultRef.collection('issuedKeys').doc(activeKey.id), activeKey);
                 } else {
@@ -162,31 +182,35 @@ export default async function handler(req, res) {
                         activeKey = keys[idx];
                     } else {
                         activeKey = {
-                            id: PUBLIC_KEY_ID, label: cfg.label || 'Public Key', key: randomKey(),
-                            priority: 0, durationDays: cfg.durationDays || null, keyGeneratedAt: now,
+                            id: PUBLIC_KEY_ID,
+                            label: cfg.label || 'Public Key',
+                            key: randomKey(),
+                            priority: 0,
+                            durationDays: cfg.durationDays || null,
+                            keyGeneratedAt: now,
                             maxUsers: cfg.maxUsersUnlimited ? 1 : Math.max(1, cfg.maxUsers || 1),
-                            maxUsersUnlimited: !!cfg.maxUsersUnlimited, boundUsers: [], terminated: false,
-                            adGateUrl: cfg.adGateUrl || '', visibility: 'public', autoGenerated: true
+                            maxUsersUnlimited: !!cfg.maxUsersUnlimited,
+                            boundUsers: [],
+                            terminated: false,
+                            visibility: 'public',
+                            autoGenerated: true
                         };
                         const updatedKeys = idx !== -1 ? keys.map((k, i) => i === idx ? activeKey : k) : [...keys, activeKey];
-                        vaultUpdate.keys = updatedKeys;
+                        tx.update(vaultRef, { keys: updatedKeys });
                     }
                 }
 
-                tx.update(vaultRef, vaultUpdate);
-
+                tx.delete(claimRef);
                 return {
-                    ok: true, key: activeKey.key,
+                    ok: true,
+                    key: activeKey.key,
                     expiresAt: activeKey.durationDays ? activeKey.keyGeneratedAt + activeKey.durationDays * 86400000 : null,
-                    unique: individualClaim,
-                    bypassed: bypassClaim
+                    unique: !!gateUrl
                 };
             });
-
             return json(res, result.status || 200, result);
         }
 
-        // Default: plain info for the Get-Key page.
         const snap = await vaultRef.get();
         if (!snap.exists) return json(res, 404, { ok: false, message: "This vault ID doesn't exist or may have been deleted." });
         const v = snap.data();
@@ -196,13 +220,18 @@ export default async function handler(req, res) {
         if (!cfg || !cfg.enabled) {
             return json(res, 200, { ok: true, requireKey: true, title: v.title || '', publicKey: null });
         }
+        const gateUrl = configuredGate(cfg);
+        const gateBlocked = !!gateUrl && !isSafeExternalUrl(gateUrl);
         return json(res, 200, {
-            ok: true, requireKey: true, title: v.title || '',
+            ok: true,
+            requireKey: true,
+            title: v.title || '',
             publicKey: {
                 label: cfg.label || 'Public Key',
                 durationDays: cfg.durationDays || null,
-                adGateUrl: cfg.adGateUrl || '',
-                linkvertiseConfigured: (await db.collection('linkvertiseCredentials').doc(String(id)).get()).exists
+                customLinkUrl: gateBlocked ? '' : gateUrl,
+                customLinkConfigured: !!gateUrl,
+                customLinkBlocked: gateBlocked
             }
         });
     } catch (err) {

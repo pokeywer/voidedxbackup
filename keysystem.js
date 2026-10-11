@@ -82,8 +82,15 @@ function generateRandomKey() {
 function isSafeUrl(url) {
     if (!url) return true;
     try {
-        const parsed = new URL(url, window.location.origin);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        const parsed = new URL(url);
+        const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+        const blocked = ['phub.com', 'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'redtube.com', 'youporn.com', 'tube8.com', 'spankbang.com', 'porn.com', 'hentaihaven.xxx', 'nhentai.net', 'rule34.xxx', 'chaturbate.com', 'stripchat.com', 'livejasmin.com', 'xhamsterlive.com', 'camsoda.com'];
+        const blockedLabels = ['porn', 'phub', 'xxx', 'hentai', 'xvideos', 'xnxx', 'xhamster', 'adult'];
+        return parsed.protocol === 'https:' && !parsed.username && !parsed.password &&
+            !!host && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host) && !host.includes(':') &&
+            !['localhost'].includes(host) && !/\.(local|internal|test|invalid|onion)$/.test(host) &&
+            !blockedLabels.some(label => host.split('.').includes(label)) &&
+            !blocked.some(domain => host === domain || host.endsWith(`.${domain}`));
     } catch {
         return false;
     }
@@ -111,10 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const publicDurationCustom = document.getElementById('public-duration-custom');
     const publicMaxUsersInput = document.getElementById('public-maxusers-input');
     const publicUnlimitedToggle = document.getElementById('public-unlimited-toggle');
-    const publicAdGateInput = document.getElementById('public-adgate-input');
-    const linkvertiseTokenInput = document.getElementById('linkvertise-token-input');
-    const saveLinkvertiseTokenBtn = document.getElementById('save-linkvertise-token-btn');
-    const linkvertiseTokenStatus = document.getElementById('linkvertise-token-status');
+    const publicCustomLinkInput = document.getElementById('public-custom-link-input');
     const publicRegenerateBtn = document.getElementById('public-regenerate-btn');
     const publicTerminateBtn = document.getElementById('public-terminate-btn');
     const publicKeyActions = document.getElementById('public-key-actions');
@@ -159,6 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const keysystemStatus = document.getElementById('keysystem-status');
     const keysystemGetKeyOutput = document.getElementById('keysystem-get-key-output');
     const keysystemCopyKeyLinkBtn = document.getElementById('keysystem-copy-key-link-btn');
+    const keysystemRewardOutput = document.getElementById('keysystem-reward-output');
+    const keysystemCopyRewardBtn = document.getElementById('keysystem-copy-reward-btn');
     const keysystemApplyBtn = document.getElementById('keysystem-apply-btn');
 
     if (!vaultId) {
@@ -182,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentKeys = [];
     let currentOwnerLegacy = false;
     let currentBannedUsers = [];
-    let linkvertiseTokenConfigured = false;
 
     const defaultGuiAppearance = {
         title: 'VoidedX Key System',
@@ -388,54 +393,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setGuiCustomizerVisible() {
         guiCustomizer.classList.toggle('hidden', !chkGuiMode.checked);
     }
-
-    async function loadLinkvertiseConfig() {
-        try {
-            const user = auth.currentUser || await waitForUser();
-            const response = await fetch(`/api/linkvertise-config?id=${encodeURIComponent(vaultId)}`, {
-                headers: { Authorization: `Bearer ${await user.getIdToken()}` }
-            });
-            const data = await response.json();
-            if (!data.ok) throw new Error(data.message || 'Could not load Linkvertise settings.');
-            linkvertiseTokenConfigured = !!data.configured;
-            linkvertiseTokenStatus.textContent = linkvertiseTokenConfigured
-                ? 'Anti-Bypass token saved securely on the server.'
-                : 'No token saved. Ad-gate links stay disabled until you save one.';
-        } catch (err) {
-            linkvertiseTokenConfigured = false;
-            linkvertiseTokenStatus.textContent = err.message || 'Could not load Linkvertise settings.';
-        }
-    }
-
-    saveLinkvertiseTokenBtn.addEventListener('click', async () => {
-        const token = linkvertiseTokenInput.value.trim();
-        if (!/^[a-f0-9]{64}$/i.test(token)) {
-            showToast('Paste the 64-character Anti-Bypass token from Linkvertise.', 'error');
-            return;
-        }
-        saveLinkvertiseTokenBtn.disabled = true;
-        try {
-            const user = auth.currentUser || await waitForUser();
-            const response = await fetch(`/api/linkvertise-config?id=${encodeURIComponent(vaultId)}`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${await user.getIdToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ token })
-            });
-            const data = await response.json();
-            if (!data.ok) throw new Error(data.message || 'Could not save the token.');
-            linkvertiseTokenConfigured = true;
-            linkvertiseTokenInput.value = '';
-            linkvertiseTokenStatus.textContent = 'Anti-Bypass token saved securely on the server.';
-            showToast('Linkvertise verification token saved.', 'success');
-        } catch (err) {
-            showToast(err.message || 'Could not save the token.', 'error', 6000);
-        } finally {
-            saveLinkvertiseTokenBtn.disabled = false;
-        }
-    });
 
     renderGuiTemplateGallery();
     [guiTitleInput, guiSubtitleInput, guiButtonInput, guiAccentColor, guiSecondaryColor, guiBackgroundColor, guiTextColor]
@@ -668,9 +625,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderPublicKeyStatus(entry) {
         if (!chkPublicKey.checked) { publicKeyStatus.textContent = ''; return; }
-        if (publicAdGateInput.value.trim()) {
+        if (publicCustomLinkInput.value.trim()) {
             publicKeyActions.classList.add('hidden');
-            publicKeyStatus.textContent = 'With Ad-Gate enabled, each successfully verified Linkvertise completion issues a new random key. Reusing the same completion proof cannot issue another.';
+            publicKeyStatus.textContent = 'Custom link enabled: each valid one-time return ticket issues a separate key. Your link service must preserve the ticket and redirect it to the reward URL template; the ticket prevents replay but cannot independently prove an external task was completed.';
             return;
         }
         publicKeyActions.classList.remove('hidden');
@@ -810,6 +767,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => keysystemCopyKeyLinkBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy', 2000);
     });
 
+    keysystemCopyRewardBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(keysystemRewardOutput.value);
+        keysystemCopyRewardBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+        showToast('One-time reward URL template copied.', 'success', 2000);
+        setTimeout(() => keysystemCopyRewardBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy', 2000);
+    });
+
     // ---------------- Load / migrate vault data ----------------
     function keysFromVaultData(data) {
         // Only private/whitelist keys live in the manual list now — the public
@@ -866,7 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ksError.classList.remove('hidden');
                 return;
             }
-            await loadLinkvertiseConfig();
             currentOwnerLegacy = data.uid === 'guest';
             ksVaultTitle.textContent = data.title || 'Untitled Vault';
             guiPreviewVaultName.textContent = `Vault: ${ksVaultTitle.textContent}`;
@@ -894,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
             publicMaxUsersInput.value = cfg.maxUsers || 1;
             publicMaxUsersInput.disabled = !!cfg.maxUsersUnlimited;
             publicUnlimitedToggle.checked = !!cfg.maxUsersUnlimited;
-            publicAdGateInput.value = cfg.adGateUrl || '';
+            publicCustomLinkInput.value = cfg.customLinkUrl || '';
             renderPublicKeyStatus(getPublicKeyEntry(data));
 
             chkGuiMode.checked = !!data.guiMode;
@@ -929,7 +892,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 resetIpBtn.classList.add('hidden');
             }
 
-            keysystemGetKeyOutput.value = `${window.location.origin}/key.html?id=${vaultId}`;
+            keysystemGetKeyOutput.value = `${window.location.origin}/key.html?id=${encodeURIComponent(vaultId)}`;
+            keysystemRewardOutput.value = `${window.location.origin}/key.html?id=${encodeURIComponent(vaultId)}&ticket={vx_ticket}`;
             keysystemStatus.innerHTML = (!data.requireKey || currentKeys.length === 0)
                 ? '<i class="fa-solid fa-circle-info text-cyan"></i><p>Key system is currently off, or has no keys yet.</p>'
                 : `<i class="fa-solid fa-circle-check text-success"></i><p>${currentKeys.length} key${currentKeys.length > 1 ? 's are' : ' is'} active. Visitors pick any working public key from the Get-Key link.</p>`;
@@ -953,12 +917,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('One of your keys is empty — fill it in or delete that key.', 'error');
             return;
         }
-        if (chkKeySystem.checked && chkPublicKey.checked && !isSafeUrl(publicAdGateInput.value.trim())) {
-            showToast('The public key ad-gate link looks invalid — only http/https links are allowed.', 'error', 5000);
-            return;
-        }
-        if (chkKeySystem.checked && chkPublicKey.checked && publicAdGateInput.value.trim() && !linkvertiseTokenConfigured) {
-            showToast('Save your Linkvertise Anti-Bypass token before applying an ad-gate link.', 'error', 6000);
+        if (chkKeySystem.checked && chkPublicKey.checked && !isSafeUrl(publicCustomLinkInput.value.trim())) {
+            showToast('Use a safe HTTPS custom link. Local, unsafe, adult-content, and blocked domains are not allowed.', 'error', 5000);
             return;
         }
 
@@ -993,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : parseInt(publicDurationVal, 10),
             maxUsers: Math.max(1, parseInt(publicMaxUsersInput.value, 10) || 1),
             maxUsersUnlimited: !!publicUnlimitedToggle.checked,
-            adGateUrl: publicAdGateInput.value.trim()
+            customLinkUrl: publicCustomLinkInput.value.trim()
         };
 
         const originalHtml = keysystemApplyBtn.innerHTML;

@@ -90,18 +90,6 @@ function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// Only allow http(s) links for ad-gate URLs — blocks javascript: URI injection
-// and similar schemes from ever becoming a clickable href on the Get-Key page.
-function isSafeUrl(url) {
-    if (!url) return true; // empty is fine — it just means no ad-gate step
-    try {
-        const parsed = new URL(url, window.location.origin);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-        return false;
-    }
-}
-
 // Translates raw Firebase Auth error codes into human, actionable copy.
 function friendlyAuthError(err) {
     const code = err && err.code ? err.code : '';
