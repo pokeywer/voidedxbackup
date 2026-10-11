@@ -10882,11 +10882,16 @@ local ok, outputOrError = xpcall(function()
 
   config.LuaVersion = ${d(e.luaVersion)}
   if config.LuaVersion == "LuaU" then
-    -- Vmify emits a Lua 5.1 bytecode interpreter, which cannot preserve Roblox Luau APIs reliably.
-    -- AntiTamper only applies when Vmify is enabled, so omit both for Roblox scripts.
+    -- Keep Luau service/API strings unchanged; the Lua 5.1 VM and string passes can corrupt them.
+    local incompatibleSteps = {
+      Vmify = true,
+      AntiTamper = true,
+      EncryptStrings = true,
+      ConstantArray = true,
+    }
     local compatibleSteps = {}
     for _, step in ipairs(config.Steps or {}) do
-      if step.Name ~= "Vmify" and step.Name ~= "AntiTamper" then
+      if not incompatibleSteps[step.Name] then
         compatibleSteps[#compatibleSteps + 1] = step
       end
     end
