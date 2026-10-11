@@ -4,6 +4,7 @@ This integrates the Prometheus engine into VoidedX's existing Vault Protection p
 
 Upload files into the matching repository paths and replace files when GitHub asks. Keep all five files in prometheus-engine/assets/ together.
 
-The switch is fixed to Medium and LuaU. When enabled, saving a vault runs the provided Prometheus engine in the browser and stores its compressed output separately from the original source. Existing /api/raw, /api/verify, and /api/payload routes deliver the transformed copy. This patch adds no API endpoints. Do not replace the entire api folder; only copy the listed API files.
+The switch is fixed to Medium and LuaU. A Roblox compatibility profile skips Prometheus's Vmify and AntiTamper passes while keeping the other Medium transformations. When enabled, saving a vault runs the supplied Prometheus engine in the browser and stores its compressed output separately from the original source. Existing /api/raw, /api/verify, and /api/payload routes deliver the transformed copy. This patch adds no API endpoints. Do not replace the entire api folder; only copy the listed API files.
 
-The supplied Prometheus license requires the public UI credit and license notice included here. Do not remove the attribution or LICENSE-PROMETHEUS.txt while using this engine.
+Prometheus documents LuaU support as basic and unfinished; some Luau-specific syntax or Roblox script patterns may still be unsupported. Keep a backup and test privately before broad use.
+

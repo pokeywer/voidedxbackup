@@ -10881,6 +10881,17 @@ local ok, outputOrError = xpcall(function()
   end
 
   config.LuaVersion = ${d(e.luaVersion)}
+  if config.LuaVersion == "LuaU" then
+    -- Vmify emits a Lua 5.1 bytecode interpreter, which cannot preserve Roblox Luau APIs reliably.
+    -- AntiTamper only applies when Vmify is enabled, so omit both for Roblox scripts.
+    local compatibleSteps = {}
+    for _, step in ipairs(config.Steps or {}) do
+      if step.Name ~= "Vmify" and step.Name ~= "AntiTamper" then
+        compatibleSteps[#compatibleSteps + 1] = step
+      end
+    end
+    config.Steps = compatibleSteps
+  end
   config.PrettyPrint = ${e.prettyPrint?`true`:`false`}
   config.Seed = ${Math.max(1,Math.floor(e.seed))}
 
