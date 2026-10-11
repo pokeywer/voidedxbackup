@@ -1,6 +1,6 @@
 import { db, FieldValue } from './_admin.js';
 import { recordExecution } from './_executionStats.js';
-import { obfuscateLuaMedium } from '../lua-medium.js';
+import { getCodeForExecution } from './_deliveryCode.js';
 
 function json(res, status, body) {
     res.setHeader('Content-Type', 'application/json');
@@ -204,7 +204,3 @@ export default async function handler(req, res) {
     }
 }
 
-function getCodeForExecution(vaultData) {
-    const source = typeof vaultData.code === 'string' ? vaultData.code : '';
-    return vaultData.obfuscationEnabled === true ? obfuscateLuaMedium(source) : source;
-}

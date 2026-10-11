@@ -6,6 +6,7 @@ import {
 import {
     getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+import { obfuscateLuaMedium, encodeObfuscatedCode } from './lua-medium.js';
 
 // --- YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
@@ -1197,13 +1198,30 @@ document.addEventListener('DOMContentLoaded', () => {
         isSaving = true;
         const originalBtnHtml = lockBtn.innerHTML;
         lockBtn.disabled = true;
-        lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> SAVING...';
+        lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> PREPARING...';
 
         // Trigger the local download before awaiting Firestore so the browser
         // still recognizes the Save button click as the user's action.
         if (chkBackup && chkBackup.checked && !downloadLocalVaultBackup(vaultId, title, code)) {
             showToast('Vault saving will continue, but the browser could not start the .txt backup download.', 'info', 6000);
         }
+
+        let encodedObfuscatedCode = null;
+        const obfuscationEnabled = !!(chkObfuscation && chkObfuscation.checked);
+        if (obfuscationEnabled) {
+            lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING...';
+            try {
+                const transformed = await obfuscateLuaMedium(code);
+                encodedObfuscatedCode = await encodeObfuscatedCode(transformed);
+            } catch (error) {
+                showToast('Prometheus could not obfuscate this script: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
+                isSaving = false;
+                lockBtn.disabled = false;
+                lockBtn.innerHTML = originalBtnHtml;
+                return;
+            }
+        }
+        lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> SAVING...';
 
         let currentExecutions = 0;
         let existingKeyFields = {
@@ -1239,7 +1257,9 @@ document.addEventListener('DOMContentLoaded', () => {
             id: vaultId,
             title: title,
             code: code,
-            obfuscationEnabled: !!(chkObfuscation && chkObfuscation.checked),
+            obfuscationEnabled,
+            obfuscatedCode: encodedObfuscatedCode ? encodedObfuscatedCode.value : null,
+            obfuscatedCodeEncoding: encodedObfuscatedCode ? encodedObfuscatedCode.encoding : null,
             ...existingKeyFields,
             executions: currentExecutions,
             autoDeleteAt: currentExecutions === 0 ? Date.now() + ZERO_EXECUTION_VAULT_TTL_MS : null,

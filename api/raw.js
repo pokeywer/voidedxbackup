@@ -1,7 +1,7 @@
 import { db } from './_admin.js';
 import { recordExecution, recordActiveUser } from './_executionStats.js';
 import { buildRemovedVaultGui } from './_removedVaultGui.js';
-import { obfuscateLuaMedium } from '../lua-medium.js';
+import { getCodeForExecution } from './_deliveryCode.js';
 
 function isExecutorRequest(req) {
     const ua = (req.headers['user-agent'] || '').toLowerCase();
@@ -95,11 +95,6 @@ error("[VoidedX] Invalid Key Provided!", 2)
     } catch (err) {
         return res.status(500).send(`Error loading script: ${err.message}`);
     }
-}
-
-function getCodeForExecution(vaultData) {
-    const source = typeof vaultData.code === 'string' ? vaultData.code : '';
-    return vaultData.obfuscationEnabled === true ? obfuscateLuaMedium(source) : source;
 }
 
 function buildKeyLoader(id, key, origin) {
