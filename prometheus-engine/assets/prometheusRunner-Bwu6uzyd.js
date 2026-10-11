@@ -10882,7 +10882,8 @@ local ok, outputOrError = xpcall(function()
 
   config.LuaVersion = ${d(e.luaVersion)}
   if config.LuaVersion == "LuaU" then
-    -- Keep Luau service/API strings unchanged; the Lua 5.1 VM and string passes can corrupt them.
+    -- Keep Luau API strings intact and always omit Prometheus's debug-heavy AntiTamper.
+    -- The optional watermark check is fail-closed without hooks or infinite loops.
     local incompatibleSteps = {
       Vmify = true,
       AntiTamper = true,
@@ -10896,6 +10897,26 @@ local ok, outputOrError = xpcall(function()
       end
     end
     config.Steps = compatibleSteps
+    -- Split string literals using native concatenation so Luau needs no decoder helper.
+    table.insert(config.Steps, {
+      Name = "SplitStrings",
+      Settings = {
+        Threshold = 1,
+        MinLength = 2,
+        MaxLength = 5,
+        ConcatenationType = "strcat",
+      },
+    })
+    if ${e.tamperCheck === true ? `true` : `false`} then
+      table.insert(config.Steps, {
+        Name = "WatermarkCheck",
+        Settings = { Content = "VoidedX:" .. tostring(config.Seed) },
+      })
+    end
+    if ${e.vmProtection === true ? `true` : `false`} then
+      -- Use a single VM pass at the end, only when explicitly enabled.
+      table.insert(config.Steps, { Name = "Vmify", Settings = {} })
+    end
   end
   if config.LuaVersion == "LuaU" and ${e.preset === "Strong" ? `true` : `false`} then
     -- Keep the stronger numeric representation pass exact for LuaU: avoid

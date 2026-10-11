@@ -6,7 +6,7 @@ import {
 import {
     getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
-import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode, getUtf8ByteLength } from './lua-medium.js';
+import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode, encodeVaultSource, decodeVaultSource, getUtf8ByteLength, MAX_VAULT_SOURCE_BYTES } from './lua-medium.js';
 
 // --- YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
@@ -32,6 +32,7 @@ const MAX_LINE_NUMBER_GUTTER_LINES = 50_000;
 const vaultExpiryTimers = new Map();
 const vaultExpiryWarningIds = new Set();
 let vaultsLoadedForUid = null;
+let editorLoadGeneration = 0;
 
 // ============================================================
 // Small reusable UI helpers (toasts, field errors, confirm modal)
@@ -275,6 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const chkBackup = document.getElementById('chk-backup');
     const chkObfuscation = document.getElementById('chk-obfuscation');
     const obfuscationLevelSelect = document.getElementById('obfuscation-level');
+    const chkTamperCheck = document.getElementById('chk-tamper-check');
+    const chkVmProtection = document.getElementById('chk-vm-protection');
     const backupNowBtn = document.getElementById('backup-now-btn');
     const protectionKeyStatus = document.getElementById('protection-key-status');
     const openKeysystemBtn = document.getElementById('open-keysystem-btn');
@@ -817,14 +820,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    function loadVaultIntoEditor(id, data) {
+    async function loadVaultIntoEditor(id, data) {
+        const loadGeneration = ++editorLoadGeneration;
         activeVaultId.value = id;
+        let loadedCode;
+        try {
+            loadedCode = await decodeVaultSource(data.code, data.codeEncoding);
+        } catch (error) {
+            showToast('Could not open this vault source: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
+            return;
+        }
+        if (loadGeneration !== editorLoadGeneration || activeVaultId.value !== id) return;
         scriptTitle.value = data.title || '';
-        sourceCode.value = data.code || '';
+        sourceCode.value = loadedCode;
         if (chkObfuscation) chkObfuscation.checked = data.obfuscationEnabled === true;
         if (obfuscationLevelSelect) {
             obfuscationLevelSelect.value = ['auto', 'low', 'medium', 'high'].includes(data.obfuscationLevel) ? data.obfuscationLevel : 'auto';
         }
+        if (chkTamperCheck) chkTamperCheck.checked = data.tamperCheckEnabled === true;
+        if (chkVmProtection) chkVmProtection.checked = data.vmProtectionEnabled === true;
         setEditorDirty(false);
         setProtectionKeyStatus(!!data.requireKey);
         updateLineNumbers();
@@ -1169,6 +1183,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (chkObfuscation) chkObfuscation.addEventListener('change', () => setEditorDirty(true));
     if (obfuscationLevelSelect) obfuscationLevelSelect.addEventListener('change', () => setEditorDirty(true));
+    if (chkTamperCheck) chkTamperCheck.addEventListener('change', () => setEditorDirty(true));
+    if (chkVmProtection) chkVmProtection.addEventListener('change', () => setEditorDirty(true));
 
     if (backupNowBtn) {
         backupNowBtn.addEventListener('click', () => {
@@ -1222,6 +1238,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (getUtf8ByteLength(code) > MAX_VAULT_SOURCE_BYTES) {
+            showToast('This script is over the 2 MiB save limit. Reduce its size before saving.', 'error', 9000);
+            return;
+        }
+
         const title = scriptTitle.value.trim() || 'Untitled Vault';
         const vaultId = activeVaultId.value || ('vx_' + Math.random().toString(36).substring(2, 10));
 
@@ -1236,14 +1257,30 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Vault saving will continue, but the browser could not start the .txt backup download.', 'info', 6000);
         }
 
+        let encodedSourceCode;
+        try {
+            encodedSourceCode = await encodeVaultSource(code);
+        } catch (error) {
+            showToast('Could not compress the source script: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
+            isSaving = false;
+            lockBtn.disabled = false;
+            lockBtn.innerHTML = originalBtnHtml;
+            return;
+        }
+
         let encodedObfuscatedCode = null;
         const obfuscationEnabled = !!(chkObfuscation && chkObfuscation.checked);
         const requestedObfuscationLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
         const effectiveObfuscationLevel = resolveObfuscationLevel(code, requestedObfuscationLevel);
+        const tamperCheckEnabled = !!(chkTamperCheck && chkTamperCheck.checked);
+        const vmProtectionEnabled = !!(chkVmProtection && chkVmProtection.checked);
         if (obfuscationEnabled) {
             lockBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING ${effectiveObfuscationLevel.toUpperCase()}...`;
             try {
-                const transformed = await obfuscateLua(code, effectiveObfuscationLevel);
+                const transformed = await obfuscateLua(code, effectiveObfuscationLevel, {
+                    tamperCheck: tamperCheckEnabled,
+                    vmProtection: vmProtectionEnabled
+                });
                 encodedObfuscatedCode = await encodeObfuscatedCode(transformed);
             } catch (error) {
                 showToast('Prometheus could not obfuscate this script: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
@@ -1288,9 +1325,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = {
             id: vaultId,
             title: title,
-            code: code,
+            code: encodedSourceCode.value,
+            codeEncoding: encodedSourceCode.encoding,
             obfuscationEnabled,
             obfuscationLevel: requestedObfuscationLevel,
+            tamperCheckEnabled,
+            vmProtectionEnabled,
             obfuscatedCodeLevel: obfuscationEnabled ? effectiveObfuscationLevel : null,
             obfuscatedCode: encodedObfuscatedCode ? encodedObfuscatedCode.value : null,
             obfuscatedCodeEncoding: encodedObfuscatedCode ? encodedObfuscatedCode.encoding : null,
@@ -1371,6 +1411,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceCode.value = '';
         if (chkObfuscation) chkObfuscation.checked = false;
         if (obfuscationLevelSelect) obfuscationLevelSelect.value = 'auto';
+        if (chkTamperCheck) chkTamperCheck.checked = true;
+        if (chkVmProtection) chkVmProtection.checked = false;
         setEditorDirty(false);
         setProtectionKeyStatus(false);
         updateLineNumbers();
