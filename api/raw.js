@@ -188,6 +188,16 @@ function buildGuiLoader(id, origin, rawAppearance = {}, rawVaultName = '') {
     const [accentR, accentG, accentB] = toRgb(appearance.accentColor);
     const [glowR, glowG, glowB] = toRgb(appearance.secondaryColor);
     const [textR, textG, textB] = toRgb(appearance.textColor);
+    const colorLuminance = hex => {
+        const channels = toRgb(hex).map(value => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const buttonTextColor = (colorLuminance(appearance.accentColor) + colorLuminance(appearance.secondaryColor)) / 2 >= 0.18
+        ? [17, 24, 39]
+        : [248, 250, 252];
     const backgroundAnimation = appearance.backgroundAnimation;
     return `
 local Players = game:GetService("Players")
@@ -292,24 +302,163 @@ local cardGradient = Instance.new("UIGradient")
 cardGradient.Rotation = 90
 cardGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
 if BACKGROUND_ANIMATION ~= "none" then
-    cardGradient.Color = ColorSequence.new(COL_BG:Lerp(COL_CYAN, 0.1), COL_BG:Lerp(COL_ACCENT, 0.15))
-    cardGradient.Transparency = NumberSequence.new(0.38)
+    cardGradient.Color = ColorSequence.new(COL_BG:Lerp(COL_CYAN, 0.08), COL_BG:Lerp(COL_ACCENT, 0.12))
+    cardGradient.Transparency = NumberSequence.new(0.86)
 end
 cardGradient.Parent = card
-if BACKGROUND_ANIMATION == "aurora" then
-    TweenService:Create(cardGradient, TweenInfo.new(18, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
-elseif BACKGROUND_ANIMATION == "orbit" then
-    TweenService:Create(cardGradient, TweenInfo.new(12, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -270 }):Play()
-elseif BACKGROUND_ANIMATION == "waves" then
-    TweenService:Create(cardGradient, TweenInfo.new(9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 210 }):Play()
-elseif BACKGROUND_ANIMATION == "starlight" then
-    TweenService:Create(cardGradient, TweenInfo.new(16, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 150 }):Play()
-elseif BACKGROUND_ANIMATION == "pulse" then
-    TweenService:Create(card, TweenInfo.new(2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundColor3 = COL_BG:Lerp(COL_CYAN, 0.12) }):Play()
-elseif BACKGROUND_ANIMATION == "scanline" then
-    TweenService:Create(cardGradient, TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
-elseif BACKGROUND_ANIMATION == "shimmer" then
-    TweenService:Create(cardGradient, TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -360 }):Play()
+local ambientGlows = {}
+if BACKGROUND_ANIMATION ~= "none" then
+    local function makeAmbientGlow(name, color, position, size)
+        local glow = Instance.new("Frame")
+        glow.Name = name
+        glow.Position = position
+        glow.Size = size
+        glow.BackgroundColor3 = color
+        glow.BackgroundTransparency = 0.94
+        glow.BorderSizePixel = 0
+        glow.ZIndex = 2
+        glow.Parent = card
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = glow
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new(color, COL_ACCENT)
+        gradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.5, 0.25),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+        gradient.Parent = glow
+        table.insert(ambientGlows, glow)
+        return glow
+    end
+    local glowSizeA = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.7, 0, 0.55, 0) or UDim2.new(0.58, 0, 0.44, 0)
+    local glowSizeB = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.64, 0, 0.5, 0) or UDim2.new(0.54, 0, 0.4, 0)
+    local glowPositionA = UDim2.new(0.02, 0, 0.04, 0)
+    local glowPositionB = UDim2.new(0.4, 0, 0.5, 0)
+    if BACKGROUND_ANIMATION == "corners" then
+        glowSizeA = UDim2.new(0.3, 0, 0.23, 0)
+        glowSizeB = UDim2.new(0.3, 0, 0.23, 0)
+        glowPositionB = UDim2.new(0.68, 0, 0.68, 0)
+    end
+    makeAmbientGlow("VoidedXAmbientGlowA", COL_CYAN, glowPositionA, glowSizeA)
+    makeAmbientGlow("VoidedXAmbientGlowB", COL_ACCENT, glowPositionB, glowSizeB)
+
+    if BACKGROUND_ANIMATION == "orbit" then
+        local function orbitGlow(glow, points, segmentSeconds)
+            task.spawn(function()
+                while glow.Parent do
+                    for _, position in ipairs(points) do
+                        if not glow.Parent then return end
+                        local tween = TweenService:Create(glow, TweenInfo.new(segmentSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { Position = position })
+                        tween:Play()
+                        tween.Completed:Wait()
+                    end
+                end
+            end)
+        end
+        orbitGlow(ambientGlows[1], {
+            UDim2.new(0.46, 0, 0.04, 0), UDim2.new(0.46, 0, 0.45, 0),
+            UDim2.new(0.02, 0, 0.45, 0), UDim2.new(0.02, 0, 0.04, 0)
+        }, 5)
+        orbitGlow(ambientGlows[2], {
+            UDim2.new(0.12, 0, 0.48, 0), UDim2.new(0.12, 0, 0.08, 0),
+            UDim2.new(0.46, 0, 0.08, 0), UDim2.new(0.46, 0, 0.48, 0)
+        }, 6)
+    else
+        local glowDuration = BACKGROUND_ANIMATION == "waves" and 10
+            or (BACKGROUND_ANIMATION == "nebula" and 24
+            or (BACKGROUND_ANIMATION == "drift" and 20 or 16))
+        local endPositionA = BACKGROUND_ANIMATION == "waves" and UDim2.new(0.12, 0, 0.34, 0)
+            or (BACKGROUND_ANIMATION == "corners" and UDim2.new(0.04, 0, 0.06, 0) or UDim2.new(0.34, 0, 0.3, 0))
+        local endPositionB = BACKGROUND_ANIMATION == "waves" and UDim2.new(0.2, 0, 0.1, 0)
+            or (BACKGROUND_ANIMATION == "corners" and UDim2.new(0.65, 0, 0.65, 0) or UDim2.new(0.08, 0, 0.16, 0))
+        TweenService:Create(ambientGlows[1], TweenInfo.new(glowDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            Position = endPositionA,
+            Size = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.62, 0, 0.5, 0) or UDim2.new(0.52, 0, 0.42, 0)
+        }):Play()
+        TweenService:Create(ambientGlows[2], TweenInfo.new(glowDuration + 3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            Position = endPositionB,
+            Size = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.58, 0, 0.46, 0) or UDim2.new(0.48, 0, 0.38, 0)
+        }):Play()
+    end
+
+    if BACKGROUND_ANIMATION == "particles" then
+        local particleLayer = Instance.new("Frame")
+        particleLayer.Name = "VoidedXAmbientParticles"
+        particleLayer.Size = UDim2.fromScale(1, 1)
+        particleLayer.BackgroundTransparency = 1
+        particleLayer.BorderSizePixel = 0
+        particleLayer.ZIndex = 2
+        particleLayer.Parent = card
+        local particlePoints = { { 0.045, 0.18 }, { 0.94, 0.26 }, { 0.06, 0.72 }, { 0.92, 0.82 } }
+        for index, point in ipairs(particlePoints) do
+            local particle = Instance.new("Frame")
+            particle.Name = "AmbientParticle" .. tostring(index)
+            particle.Position = UDim2.new(point[1], 0, point[2], 0)
+            particle.Size = UDim2.new(0, 3, 0, 3)
+            particle.BackgroundColor3 = index % 2 == 0 and COL_ACCENT or COL_CYAN
+            particle.BackgroundTransparency = 0.5
+            particle.BorderSizePixel = 0
+            particle.ZIndex = 2
+            particle.Parent = particleLayer
+            local particleCorner = Instance.new("UICorner")
+            particleCorner.CornerRadius = UDim.new(1, 0)
+            particleCorner.Parent = particle
+            TweenService:Create(particle, TweenInfo.new(2.4 + index * 0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                Position = UDim2.new(point[1], 2, point[2] - 0.035, 0),
+                BackgroundTransparency = 0.88
+            }):Play()
+        end
+    elseif BACKGROUND_ANIMATION == "grid" then
+        local gridLayer = Instance.new("Frame")
+        gridLayer.Name = "VoidedXCircuitGrid"
+        gridLayer.Size = UDim2.fromScale(1, 1)
+        gridLayer.BackgroundTransparency = 1
+        gridLayer.BorderSizePixel = 0
+        gridLayer.ClipsDescendants = true
+        gridLayer.ZIndex = 2
+        gridLayer.Parent = card
+        local gridCorner = Instance.new("UICorner")
+        gridCorner.CornerRadius = UDim.new(0, 20)
+        gridCorner.Parent = gridLayer
+        for index = 1, 3 do
+            local line = Instance.new("Frame")
+            line.Position = UDim2.new(0, 0, index * 0.25, 0)
+            line.Size = UDim2.new(1, 0, 0, 1)
+            line.BackgroundColor3 = COL_CYAN
+            line.BackgroundTransparency = 0.965
+            line.BorderSizePixel = 0
+            line.ZIndex = 2
+            line.Parent = gridLayer
+        end
+        for index = 1, 4 do
+            local line = Instance.new("Frame")
+            line.Position = UDim2.new(index * 0.2, 0, 0, 0)
+            line.Size = UDim2.new(0, 1, 1, 0)
+            line.BackgroundColor3 = COL_ACCENT
+            line.BackgroundTransparency = 0.97
+            line.BorderSizePixel = 0
+            line.ZIndex = 2
+            line.Parent = gridLayer
+        end
+    end
+
+    if BACKGROUND_ANIMATION == "pulse" or BACKGROUND_ANIMATION == "starlight" or BACKGROUND_ANIMATION == "corners" then
+        TweenService:Create(ambientGlows[1], TweenInfo.new(2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 0.9 }):Play()
+    elseif BACKGROUND_ANIMATION == "ripple" then
+        task.delay(0.45, function()
+            if card.Parent then
+                TweenService:Create(cardStroke, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.24 }):Play()
+            end
+        end)
+    elseif BACKGROUND_ANIMATION == "comet" then
+        TweenService:Create(cardGradient, TweenInfo.new(4.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+    elseif BACKGROUND_ANIMATION == "scanline" then
+        TweenService:Create(cardGradient, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+    elseif BACKGROUND_ANIMATION == "shimmer" then
+        TweenService:Create(cardGradient, TweenInfo.new(9, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -360 }):Play()
+    end
 end
 
 local uiScale = Instance.new("UIScale")
@@ -382,7 +531,7 @@ local accentGradient = Instance.new("UIGradient")
 accentGradient.Rotation = 0
 accentGradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
 accentGradient.Parent = accentBar
-if BACKGROUND_ANIMATION == "scanline" then
+if BACKGROUND_ANIMATION == "scanline" or BACKGROUND_ANIMATION == "comet" then
     TweenService:Create(accentGradient, TweenInfo.new(2.8, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 180 }):Play()
 elseif BACKGROUND_ANIMATION == "shimmer" then
     TweenService:Create(accentGradient, TweenInfo.new(4.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
@@ -513,18 +662,11 @@ end)
 local submitBtn = Instance.new("TextButton")
 submitBtn.Size = UDim2.new(1, 0, 0, 46)
 submitBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-submitBtn.Text = ${luaString(appearance.buttonLabel)}
-submitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-submitBtn.Font = Enum.Font.GothamBold
-submitBtn.TextSize = 13
-submitBtn.TextXAlignment = Enum.TextXAlignment.Left
+submitBtn.Text = ""
+submitBtn.ZIndex = 3
 submitBtn.LayoutOrder = 5
 submitBtn.AutoButtonColor = false
 submitBtn.Parent = content
-local submitPad = Instance.new("UIPadding")
-submitPad.PaddingLeft = UDim.new(0, 14)
-submitPad.PaddingRight = UDim.new(0, 46)
-submitPad.Parent = submitBtn
 local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 10)
 btnCorner.Parent = submitBtn
@@ -532,6 +674,19 @@ local btnGradient = Instance.new("UIGradient")
 btnGradient.Rotation = 45
 btnGradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
 btnGradient.Parent = submitBtn
+local submitLabel = Instance.new("TextLabel")
+submitLabel.Position = UDim2.new(0, 16, 0, 0)
+submitLabel.Size = UDim2.new(1, -60, 1, 0)
+submitLabel.BackgroundTransparency = 1
+submitLabel.Text = ${luaString(appearance.buttonLabel)}
+submitLabel.TextColor3 = Color3.fromRGB(${buttonTextColor[0]}, ${buttonTextColor[1]}, ${buttonTextColor[2]})
+submitLabel.Font = Enum.Font.GothamBold
+submitLabel.TextSize = 13
+submitLabel.TextXAlignment = Enum.TextXAlignment.Left
+submitLabel.TextYAlignment = Enum.TextYAlignment.Center
+submitLabel.TextTruncate = Enum.TextTruncate.AtEnd
+submitLabel.ZIndex = 4
+submitLabel.Parent = submitBtn
 local arrowBadge = Instance.new("Frame")
 arrowBadge.AnchorPoint = Vector2.new(1, 0.5)
 arrowBadge.Position = UDim2.new(1, -11, 0.5, 0)
@@ -539,6 +694,7 @@ arrowBadge.Size = UDim2.new(0, 25, 0, 25)
 arrowBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 arrowBadge.BackgroundTransparency = 0.82
 arrowBadge.BorderSizePixel = 0
+arrowBadge.ZIndex = 4
 arrowBadge.Parent = submitBtn
 local arrowBadgeCorner = Instance.new("UICorner")
 arrowBadgeCorner.CornerRadius = UDim.new(0, 8)
@@ -550,6 +706,7 @@ submitArrow.Text = "→"
 submitArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
 submitArrow.TextSize = 16
 submitArrow.Font = Enum.Font.GothamBold
+submitArrow.ZIndex = 5
 submitArrow.Parent = arrowBadge
 local btnScale = Instance.new("UIScale")
 btnScale.Parent = submitBtn
@@ -691,7 +848,7 @@ footerLabel.Font = Enum.Font.GothamBold
 footerLabel.LayoutOrder = 8
 footerLabel.Parent = content
 
-local introTexts = { eyebrow, badgeIcon, title, subtitle, vaultNameLabel, inputCaption, inputBox, submitBtn, submitArrow, getKeyBtn, footerLabel }
+local introTexts = { eyebrow, badgeIcon, title, subtitle, vaultNameLabel, inputCaption, inputBox, submitLabel, submitArrow, getKeyBtn, footerLabel }
 for _, textObject in ipairs(introTexts) do
     textObject.TextTransparency = 1
 end
@@ -925,7 +1082,7 @@ local function attemptVerify(fromSavedKey)
 
     verifying = true
     setStatus("", COL_MUTED)
-    animateDots(submitBtn, "Verifying")
+    animateDots(submitLabel, "Verifying")
 
     local ok, response = pcall(function()
         return game:HttpGet(
@@ -938,7 +1095,7 @@ local function attemptVerify(fromSavedKey)
 
     dotsRunning = false
     verifying = false
-    submitBtn.Text = ${luaString(appearance.buttonLabel)}
+    submitLabel.Text = ${luaString(appearance.buttonLabel)}
 
     if not ok then
         setStatus("Couldn't reach the server. Try again.", COL_RED)
@@ -981,7 +1138,8 @@ local function attemptVerify(fromSavedKey)
 
     local fileSaved = saveKeyLocally(typedKey)
     setStatus(fileSaved and "Key verified · saved on this device." or "Key verified · local file saving unavailable.", COL_GREEN)
-    submitBtn.Text = "Success"
+    submitLabel.Text = "Success"
+    submitLabel.TextColor3 = Color3.fromRGB(15, 23, 42)
     submitBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     btnGradient.Color = ColorSequence.new(COL_GREEN, COL_CYAN)
     badgeGradient.Color = ColorSequence.new(COL_GREEN, COL_CYAN)
@@ -1030,7 +1188,7 @@ function sanitizeGuiAppearance(raw = {}) {
     const color = (value, fallback) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
         ? value
         : fallback;
-    const backgroundAnimation = ['none', 'aurora', 'orbit', 'waves', 'pulse', 'scanline', 'starlight', 'shimmer'].includes(raw.backgroundAnimation)
+    const backgroundAnimation = ['none', 'aurora', 'drift', 'orbit', 'nebula', 'waves', 'pulse', 'scanline', 'starlight', 'shimmer', 'particles', 'ripple', 'comet', 'grid', 'corners'].includes(raw.backgroundAnimation)
         ? raw.backgroundAnimation
         : 'aurora';
     const backgroundColor = color(raw.backgroundColor, '#0b0d12');
