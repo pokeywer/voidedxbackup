@@ -123,7 +123,9 @@ export async function encodeVaultSource(source) {
     if (sourceBytes.byteLength > MAX_VAULT_SOURCE_BYTES) {
         throw new Error('This script is over the 2 MiB save limit. Reduce its size before saving.');
     }
-    return encodeGzipBase64(source, sourceBytes);
+    // Keep the original readable in Firestore for owner review. Older gzip-base64
+    // vaults remain readable through decodeVaultSource and the API delivery helper.
+    return { encoding: 'identity', value: source };
 }
 
 export async function decodeVaultSource(value, encoding) {
