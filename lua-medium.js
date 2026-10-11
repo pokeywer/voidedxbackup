@@ -1,6 +1,17 @@
 let nextJobId = 0;
 
-export function obfuscateLuaMedium(source) {
+export const AUTO_LOW_CHAR_THRESHOLD = 10000;
+
+export function resolveObfuscationLevel(source, requestedLevel = 'auto') {
+    if (requestedLevel === 'low' || requestedLevel === 'medium') return requestedLevel;
+    return source.length > AUTO_LOW_CHAR_THRESHOLD ? 'low' : 'medium';
+}
+
+export function obfuscateLua(source, level = 'medium') {
+    const presets = { low: 'Weak', medium: 'Medium' };
+    const preset = presets[level];
+    if (!preset) return Promise.reject(new Error('Choose Auto, Low, or Medium obfuscation.'));
+
     return new Promise((resolve, reject) => {
         const workerUrl = new URL('./prometheus-engine/assets/prometheus.worker-CXYhVY6S.js', import.meta.url);
         let worker;
@@ -36,7 +47,7 @@ export function obfuscateLuaMedium(source) {
                 options: {
                     source,
                     filename: 'vault.lua',
-                    preset: 'Medium',
+                    preset,
                     luaVersion: 'LuaU',
                     prettyPrint: false,
                     seed

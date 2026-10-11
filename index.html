@@ -106,17 +106,25 @@
                     </div>
                     <div class="toggle-list">
                         <label class="toggle-row">
-                            <span class="toggle-label-stack"><span>Lua obfuscation</span><small>Medium · Fixed</small></span>
+                            <span class="toggle-label-stack"><span>Lua obfuscation</span><small>Auto · Low / Medium</small></span>
                             <input type="checkbox" id="chk-obfuscation">
                             <span class="switch"></span>
                         </label>
+                        <div class="obfuscation-options">
+                            <label for="obfuscation-level">Strength</label>
+                            <select id="obfuscation-level" class="input-field">
+                                <option value="auto" selected>Auto (recommended)</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                            </select>
+                        </div>
                         <label class="toggle-row">
                             <span>Auto .txt Local Backup</span>
                             <input type="checkbox" id="chk-backup" checked>
                             <span class="switch"></span>
                         </label>
                     </div>
-                    <p class="obfuscation-note">Uses a Luau compatibility profile that keeps service-name strings intact. Your readable source stays in the editor; the generated copy is sent on execution.</p>
+                    <p class="obfuscation-note">Auto uses Medium up to 10,000 characters and Low for longer scripts. Choose Low or Medium to override. Your readable source stays in the editor; the generated copy is sent on execution.</p>
                     <button type="button" id="backup-now-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-download"></i> Download backup now</button>
                     <div class="protection-hint">
                         <i class="fa-solid fa-shield-halved"></i>

@@ -6,7 +6,7 @@ import {
 import {
     getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
-import { obfuscateLuaMedium, encodeObfuscatedCode } from './lua-medium.js';
+import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode } from './lua-medium.js';
 
 // --- YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyKeyLinkBtn = document.getElementById('copy-key-link-btn');
     const chkBackup = document.getElementById('chk-backup');
     const chkObfuscation = document.getElementById('chk-obfuscation');
+    const obfuscationLevelSelect = document.getElementById('obfuscation-level');
     const backupNowBtn = document.getElementById('backup-now-btn');
     const protectionKeyStatus = document.getElementById('protection-key-status');
     const openKeysystemBtn = document.getElementById('open-keysystem-btn');
@@ -824,6 +825,9 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptTitle.value = data.title || '';
         sourceCode.value = data.code || '';
         if (chkObfuscation) chkObfuscation.checked = data.obfuscationEnabled === true;
+        if (obfuscationLevelSelect) {
+            obfuscationLevelSelect.value = ['auto', 'low', 'medium'].includes(data.obfuscationLevel) ? data.obfuscationLevel : 'auto';
+        }
         setEditorDirty(false);
         setProtectionKeyStatus(!!data.requireKey);
         updateLineNumbers();
@@ -1139,6 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setEditorDirty(true);
     });
     if (chkObfuscation) chkObfuscation.addEventListener('change', () => setEditorDirty(true));
+    if (obfuscationLevelSelect) obfuscationLevelSelect.addEventListener('change', () => setEditorDirty(true));
 
     if (backupNowBtn) {
         backupNowBtn.addEventListener('click', () => {
@@ -1208,10 +1213,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let encodedObfuscatedCode = null;
         const obfuscationEnabled = !!(chkObfuscation && chkObfuscation.checked);
+        const requestedObfuscationLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
+        const effectiveObfuscationLevel = resolveObfuscationLevel(code, requestedObfuscationLevel);
         if (obfuscationEnabled) {
             lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING...';
             try {
-                const transformed = await obfuscateLuaMedium(code);
+                const transformed = await obfuscateLua(code, effectiveObfuscationLevel);
                 encodedObfuscatedCode = await encodeObfuscatedCode(transformed);
             } catch (error) {
                 showToast('Prometheus could not obfuscate this script: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
@@ -1258,6 +1265,8 @@ document.addEventListener('DOMContentLoaded', () => {
             title: title,
             code: code,
             obfuscationEnabled,
+            obfuscationLevel: requestedObfuscationLevel,
+            obfuscatedCodeLevel: obfuscationEnabled ? effectiveObfuscationLevel : null,
             obfuscatedCode: encodedObfuscatedCode ? encodedObfuscatedCode.value : null,
             obfuscatedCodeEncoding: encodedObfuscatedCode ? encodedObfuscatedCode.encoding : null,
             ...existingKeyFields,
@@ -1326,6 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptTitle.value = '';
         sourceCode.value = '';
         if (chkObfuscation) chkObfuscation.checked = false;
+        if (obfuscationLevelSelect) obfuscationLevelSelect.value = 'auto';
         setEditorDirty(false);
         setProtectionKeyStatus(false);
         updateLineNumbers();
