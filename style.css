@@ -274,6 +274,7 @@ textarea { flex: 1; min-width: 0; min-height: 0; width: 100%; background: var(--
 .editor-language { display: inline-flex; align-items: center; gap: 6px; color: #9aa9c2; font-size: 10px; font-weight: 800; letter-spacing: .8px; }
 .language-dot { width: 7px; height: 7px; border-radius: 50%; background: #c792ea; box-shadow: 0 0 8px rgba(199,146,234,.55); }
 .editor-tools-hint { flex: 1; min-width: 0; }
+.editor-source-note { flex-shrink: 0; padding: 7px 14px; border-bottom: 1px solid var(--border-color); background: rgba(17,20,28,.72); color: var(--text-muted); font-size: 10px; line-height: 1.4; }
 .check-code-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #34405a; border-radius: 6px; background: #151b29; color: #d9e2f2; padding: 6px 10px; font-size: 10px; font-weight: 750; cursor: pointer; transition: border-color .15s ease, background .15s ease; white-space: nowrap; }
 .check-code-btn:hover { border-color: #82aaff; background: #1b263b; }
 .code-editor-surface { flex: 1; min-width: 0; min-height: 0; position: relative; overflow: hidden; background: var(--bg-base); }

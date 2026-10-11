@@ -303,6 +303,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const execCountBadge = document.getElementById('exec-count-badge');
     const execCountNum = document.getElementById('exec-count-num');
     const promoShareBtn = document.getElementById('promo-share-btn');
+    const editorSourceContext = document.getElementById('editor-source-context');
+
+    function setEditorSourceContext(hasSavedVault) {
+        if (!editorSourceContext) return;
+        if (hasSavedVault) {
+            const title = scriptTitle.value.trim() || 'Untitled Vault';
+            editorSourceContext.textContent = `Showing “${title}” from your vault. This is the saved Luau source, not the website’s index.html.`;
+        } else {
+            editorSourceContext.textContent = 'Paste Luau source here. A loaded vault’s saved script appears in this editor; it is separate from the website HTML.';
+        }
+    }
 
     let hasUnsavedChanges = false;
     let cachedVaults = [];
@@ -832,6 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (loadGeneration !== editorLoadGeneration || activeVaultId.value !== id) return;
         scriptTitle.value = data.title || '';
+        setEditorSourceContext(true);
         sourceCode.value = loadedCode;
         if (chkObfuscation) chkObfuscation.checked = data.obfuscationEnabled === true;
         if (obfuscationLevelSelect) {
@@ -1363,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderVaultList();
             vaultExpiryWarningIds.delete(vaultId);
             activeVaultId.value = vaultId;
+            setEditorSourceContext(true);
 
             if (execCountBadge && execCountNum) {
                 execCountNum.textContent = currentExecutions;
@@ -1408,6 +1421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetEditor() {
         activeVaultId.value = '';
         scriptTitle.value = '';
+        setEditorSourceContext(false);
         sourceCode.value = '';
         if (chkObfuscation) chkObfuscation.checked = false;
         if (obfuscationLevelSelect) obfuscationLevelSelect.value = 'auto';

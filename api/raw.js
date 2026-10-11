@@ -300,17 +300,30 @@ cardStroke.Thickness = 1
 cardStroke.Transparency = 0.6
 cardStroke.Parent = card
 local ambientGlows = {}
+local animationLayer
 if BACKGROUND_ANIMATION ~= "none" then
-    local function makeAmbientGlow(name, color, position, size)
+    animationLayer = Instance.new("Frame")
+    animationLayer.Name = "VoidedXAnimatedBackground"
+    animationLayer.Size = UDim2.fromScale(1, 1)
+    animationLayer.BackgroundTransparency = 1
+    animationLayer.BorderSizePixel = 0
+    animationLayer.ClipsDescendants = true
+    animationLayer.ZIndex = 2
+    animationLayer.Parent = card
+    local animationCorner = Instance.new("UICorner")
+    animationCorner.CornerRadius = UDim.new(0, 20)
+    animationCorner.Parent = animationLayer
+
+    local function makeGlow(name, color, position, size, transparency)
         local glow = Instance.new("Frame")
         glow.Name = name
         glow.Position = position
         glow.Size = size
         glow.BackgroundColor3 = color
-        glow.BackgroundTransparency = 0.94
+        glow.BackgroundTransparency = transparency or 0.72
         glow.BorderSizePixel = 0
         glow.ZIndex = 2
-        glow.Parent = card
+        glow.Parent = animationLayer
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(1, 0)
         corner.Parent = glow
@@ -318,133 +331,257 @@ if BACKGROUND_ANIMATION ~= "none" then
         gradient.Color = ColorSequence.new(color, COL_ACCENT)
         gradient.Transparency = NumberSequence.new({
             NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.5, 0.25),
+            NumberSequenceKeypoint.new(0.5, 0.18),
             NumberSequenceKeypoint.new(1, 1)
         })
         gradient.Parent = glow
         table.insert(ambientGlows, glow)
-        return glow
+        return glow, gradient
     end
-    local glowSizeA = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.7, 0, 0.55, 0) or UDim2.new(0.58, 0, 0.44, 0)
-    local glowSizeB = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.64, 0, 0.5, 0) or UDim2.new(0.54, 0, 0.4, 0)
-    local glowPositionA = UDim2.new(0.02, 0, 0.04, 0)
-    local glowPositionB = UDim2.new(0.4, 0, 0.5, 0)
-    if BACKGROUND_ANIMATION == "corners" then
-        glowSizeA = UDim2.new(0.3, 0, 0.23, 0)
-        glowSizeB = UDim2.new(0.3, 0, 0.23, 0)
-        glowPositionB = UDim2.new(0.68, 0, 0.68, 0)
+
+    local firstGlow, firstGlowGradient = makeGlow("VoidedXAmbientGlowA", COL_CYAN, UDim2.new(-0.04, 0, 0.02, 0), UDim2.new(0.64, 0, 0.52, 0))
+    local secondGlow, secondGlowGradient = makeGlow("VoidedXAmbientGlowB", COL_ACCENT, UDim2.new(0.42, 0, 0.42, 0), UDim2.new(0.62, 0, 0.5, 0))
+    local function animateGlow(glow, gradient, duration, endPosition, endSize)
+        TweenService:Create(glow, TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            Position = endPosition,
+            Size = endSize
+        }):Play()
+        TweenService:Create(gradient, TweenInfo.new(duration * 1.4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+            Rotation = 180
+        }):Play()
     end
-    makeAmbientGlow("VoidedXAmbientGlowA", COL_CYAN, glowPositionA, glowSizeA)
-    makeAmbientGlow("VoidedXAmbientGlowB", COL_ACCENT, glowPositionB, glowSizeB)
 
     if BACKGROUND_ANIMATION == "orbit" then
-        local function orbitGlow(glow, points, segmentSeconds)
+        local function orbitGlow(glow, points, duration)
             task.spawn(function()
-                while glow.Parent do
-                    for _, position in ipairs(points) do
-                        if not glow.Parent then return end
-                        local tween = TweenService:Create(glow, TweenInfo.new(segmentSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { Position = position })
-                        tween:Play()
-                        tween.Completed:Wait()
-                    end
+                local pointIndex = 1
+                while animationLayer.Parent do
+                    pointIndex = pointIndex % #points + 1
+                    local tween = TweenService:Create(glow, TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                        Position = points[pointIndex]
+                    })
+                    tween:Play()
+                    tween.Completed:Wait()
                 end
             end)
         end
-        orbitGlow(ambientGlows[1], {
-            UDim2.new(0.46, 0, 0.04, 0), UDim2.new(0.46, 0, 0.45, 0),
-            UDim2.new(0.02, 0, 0.45, 0), UDim2.new(0.02, 0, 0.04, 0)
-        }, 5)
-        orbitGlow(ambientGlows[2], {
-            UDim2.new(0.12, 0, 0.48, 0), UDim2.new(0.12, 0, 0.08, 0),
-            UDim2.new(0.46, 0, 0.08, 0), UDim2.new(0.46, 0, 0.48, 0)
-        }, 6)
-    else
-        local glowDuration = BACKGROUND_ANIMATION == "waves" and 10
-            or (BACKGROUND_ANIMATION == "nebula" and 24
-            or (BACKGROUND_ANIMATION == "drift" and 20 or 16))
-        local endPositionA = BACKGROUND_ANIMATION == "waves" and UDim2.new(0.12, 0, 0.34, 0)
-            or (BACKGROUND_ANIMATION == "corners" and UDim2.new(0.04, 0, 0.06, 0) or UDim2.new(0.34, 0, 0.3, 0))
-        local endPositionB = BACKGROUND_ANIMATION == "waves" and UDim2.new(0.2, 0, 0.1, 0)
-            or (BACKGROUND_ANIMATION == "corners" and UDim2.new(0.65, 0, 0.65, 0) or UDim2.new(0.08, 0, 0.16, 0))
-        TweenService:Create(ambientGlows[1], TweenInfo.new(glowDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-            Position = endPositionA,
-            Size = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.62, 0, 0.5, 0) or UDim2.new(0.52, 0, 0.42, 0)
+        orbitGlow(firstGlow, {
+            UDim2.new(0.38, 0, 0.02, 0), UDim2.new(0.42, 0, 0.36, 0),
+            UDim2.new(0.02, 0, 0.4, 0), UDim2.new(-0.04, 0, 0.02, 0)
+        }, 4.2)
+        orbitGlow(secondGlow, {
+            UDim2.new(0.22, 0, 0.46, 0), UDim2.new(0.03, 0, 0.1, 0),
+            UDim2.new(0.42, 0, 0.06, 0), UDim2.new(0.42, 0, 0.42, 0)
+        }, 5.1)
+    elseif BACKGROUND_ANIMATION == "nebula" then
+        animateGlow(firstGlow, firstGlowGradient, 8.5, UDim2.new(0.18, 0, 0.16, 0), UDim2.new(0.78, 0, 0.64, 0))
+        animateGlow(secondGlow, secondGlowGradient, 10.5, UDim2.new(0.18, 0, 0.3, 0), UDim2.new(0.74, 0, 0.62, 0))
+        TweenService:Create(cardStroke, TweenInfo.new(3.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.32 }):Play()
+    elseif BACKGROUND_ANIMATION == "drift" then
+        animateGlow(firstGlow, firstGlowGradient, 7.5, UDim2.new(0.3, 0, 0.22, 0), UDim2.new(0.72, 0, 0.56, 0))
+        animateGlow(secondGlow, secondGlowGradient, 9, UDim2.new(0.04, 0, 0.34, 0), UDim2.new(0.68, 0, 0.54, 0))
+    elseif BACKGROUND_ANIMATION == "aurora" then
+        animateGlow(firstGlow, firstGlowGradient, 12, UDim2.new(0.18, 0, 0.28, 0), UDim2.new(0.78, 0, 0.6, 0))
+        animateGlow(secondGlow, secondGlowGradient, 10.5, UDim2.new(0.14, 0, 0.12, 0), UDim2.new(0.7, 0, 0.54, 0))
+        TweenService:Create(cardStroke, TweenInfo.new(4.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.4 }):Play()
+    elseif BACKGROUND_ANIMATION == "pulse" then
+        TweenService:Create(firstGlow, TweenInfo.new(2.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            BackgroundTransparency = 0.42,
+            Size = UDim2.new(0.78, 0, 0.62, 0)
         }):Play()
-        TweenService:Create(ambientGlows[2], TweenInfo.new(glowDuration + 3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-            Position = endPositionB,
-            Size = BACKGROUND_ANIMATION == "nebula" and UDim2.new(0.58, 0, 0.46, 0) or UDim2.new(0.48, 0, 0.38, 0)
+        TweenService:Create(secondGlow, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            BackgroundTransparency = 0.5,
+            Position = UDim2.new(0.38, 0, 0.36, 0)
         }):Play()
-    end
-
-    if BACKGROUND_ANIMATION == "particles" then
-        local particleLayer = Instance.new("Frame")
-        particleLayer.Name = "VoidedXAmbientParticles"
-        particleLayer.Size = UDim2.fromScale(1, 1)
-        particleLayer.BackgroundTransparency = 1
-        particleLayer.BorderSizePixel = 0
-        particleLayer.ZIndex = 2
-        particleLayer.Parent = card
-        local particlePoints = { { 0.045, 0.18 }, { 0.94, 0.26 }, { 0.06, 0.72 }, { 0.92, 0.82 } }
-        for index, point in ipairs(particlePoints) do
-            local particle = Instance.new("Frame")
-            particle.Name = "AmbientParticle" .. tostring(index)
-            particle.Position = UDim2.new(point[1], 0, point[2], 0)
-            particle.Size = UDim2.new(0, 3, 0, 3)
-            particle.BackgroundColor3 = index % 2 == 0 and COL_ACCENT or COL_CYAN
-            particle.BackgroundTransparency = 0.5
-            particle.BorderSizePixel = 0
-            particle.ZIndex = 2
-            particle.Parent = particleLayer
-            local particleCorner = Instance.new("UICorner")
-            particleCorner.CornerRadius = UDim.new(1, 0)
-            particleCorner.Parent = particle
-            TweenService:Create(particle, TweenInfo.new(2.4 + index * 0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-                Position = UDim2.new(point[1], 2, point[2] - 0.035, 0),
-                BackgroundTransparency = 0.88
+    elseif BACKGROUND_ANIMATION == "waves" then
+        for index = 1, 3 do
+            local ribbon = Instance.new("Frame")
+            ribbon.Name = "VoidedXWave" .. tostring(index)
+            ribbon.Position = UDim2.new(-0.2, 0, 0.18 + index * 0.2, 0)
+            ribbon.Size = UDim2.new(1.4, 0, 0, 20 + index * 5)
+            ribbon.Rotation = -8
+            ribbon.BackgroundColor3 = index % 2 == 0 and COL_ACCENT or COL_CYAN
+            ribbon.BackgroundTransparency = 0.78
+            ribbon.BorderSizePixel = 0
+            ribbon.ZIndex = 2
+            ribbon.Parent = animationLayer
+            local gradient = Instance.new("UIGradient")
+            gradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
+            gradient.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.5, 0.12),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+            gradient.Parent = ribbon
+            TweenService:Create(ribbon, TweenInfo.new(3.8 + index * 0.65, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                Position = UDim2.new(-0.08, 0, 0.08 + index * 0.2, 0),
+                Rotation = 8
             }):Play()
         end
-    elseif BACKGROUND_ANIMATION == "grid" then
-        local gridLayer = Instance.new("Frame")
-        gridLayer.Name = "VoidedXCircuitGrid"
-        gridLayer.Size = UDim2.fromScale(1, 1)
-        gridLayer.BackgroundTransparency = 1
-        gridLayer.BorderSizePixel = 0
-        gridLayer.ClipsDescendants = true
-        gridLayer.ZIndex = 2
-        gridLayer.Parent = card
-        local gridCorner = Instance.new("UICorner")
-        gridCorner.CornerRadius = UDim.new(0, 20)
-        gridCorner.Parent = gridLayer
-        for index = 1, 3 do
-            local line = Instance.new("Frame")
-            line.Position = UDim2.new(0, 0, index * 0.25, 0)
-            line.Size = UDim2.new(1, 0, 0, 1)
-            line.BackgroundColor3 = COL_CYAN
-            line.BackgroundTransparency = 0.965
-            line.BorderSizePixel = 0
-            line.ZIndex = 2
-            line.Parent = gridLayer
+    elseif BACKGROUND_ANIMATION == "scanline" or BACKGROUND_ANIMATION == "grid" then
+        if BACKGROUND_ANIMATION == "grid" then
+            for index = 1, 4 do
+                local horizontal = Instance.new("Frame")
+                horizontal.Position = UDim2.new(0, 0, index * 0.2, 0)
+                horizontal.Size = UDim2.new(1, 0, 0, 1)
+                horizontal.BackgroundColor3 = COL_CYAN
+                horizontal.BackgroundTransparency = 0.78
+                horizontal.BorderSizePixel = 0
+                horizontal.ZIndex = 2
+                horizontal.Parent = animationLayer
+            end
+            for index = 1, 5 do
+                local vertical = Instance.new("Frame")
+                vertical.Position = UDim2.new(index * 0.16, 0, 0, 0)
+                vertical.Size = UDim2.new(0, 1, 1, 0)
+                vertical.BackgroundColor3 = COL_ACCENT
+                vertical.BackgroundTransparency = 0.82
+                vertical.BorderSizePixel = 0
+                vertical.ZIndex = 2
+                vertical.Parent = animationLayer
+            end
         end
-        for index = 1, 4 do
-            local line = Instance.new("Frame")
-            line.Position = UDim2.new(index * 0.2, 0, 0, 0)
-            line.Size = UDim2.new(0, 1, 1, 0)
-            line.BackgroundColor3 = COL_ACCENT
-            line.BackgroundTransparency = 0.97
-            line.BorderSizePixel = 0
-            line.ZIndex = 2
-            line.Parent = gridLayer
+        local scan = Instance.new("Frame")
+        scan.Name = "VoidedXScanline"
+        scan.Position = UDim2.new(0, 0, -0.12, 0)
+        scan.Size = UDim2.new(1, 0, 0, BACKGROUND_ANIMATION == "grid" and 3 or 5)
+        scan.BackgroundColor3 = COL_CYAN
+        scan.BackgroundTransparency = 0.45
+        scan.BorderSizePixel = 0
+        scan.ZIndex = 2
+        scan.Parent = animationLayer
+        local scanGradient = Instance.new("UIGradient")
+        scanGradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
+        scanGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.45),
+            NumberSequenceKeypoint.new(0.5, 0.08),
+            NumberSequenceKeypoint.new(1, 0.45)
+        })
+        scanGradient.Parent = scan
+        TweenService:Create(scan, TweenInfo.new(BACKGROUND_ANIMATION == "grid" and 5.5 or 3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+            Position = UDim2.new(0, 0, 1.04, 0)
+        }):Play()
+    elseif BACKGROUND_ANIMATION == "starlight" or BACKGROUND_ANIMATION == "particles" then
+        local points = {
+            { 0.07, 0.18 }, { 0.18, 0.73 }, { 0.3, 0.3 }, { 0.44, 0.84 },
+            { 0.58, 0.16 }, { 0.72, 0.62 }, { 0.86, 0.28 }, { 0.94, 0.8 }
+        }
+        for index, point in ipairs(points) do
+            local dot = Instance.new("Frame")
+            dot.Name = (BACKGROUND_ANIMATION == "starlight" and "VoidedXStar" or "VoidedXParticle") .. tostring(index)
+            dot.Position = UDim2.new(point[1], 0, point[2], 0)
+            local diameter = BACKGROUND_ANIMATION == "starlight" and (index % 3 == 0 and 5 or 3) or (index % 2 == 0 and 5 or 4)
+            dot.Size = UDim2.new(0, diameter, 0, diameter)
+            dot.BackgroundColor3 = index % 2 == 0 and COL_ACCENT or COL_CYAN
+            dot.BackgroundTransparency = 0.18
+            dot.BorderSizePixel = 0
+            dot.ZIndex = 2
+            dot.Parent = animationLayer
+            local dotCorner = Instance.new("UICorner")
+            dotCorner.CornerRadius = UDim.new(1, 0)
+            dotCorner.Parent = dot
+            local duration = BACKGROUND_ANIMATION == "starlight" and (1.2 + (index % 4) * 0.45) or (2.4 + (index % 4) * 0.5)
+            local offsetX = index % 2 == 0 and 0.035 or -0.035
+            local offsetY = index % 2 == 0 and -0.09 or 0.09
+            TweenService:Create(dot, TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                Position = UDim2.new(math.clamp(point[1] + offsetX, 0.02, 0.96), 0, math.clamp(point[2] + offsetY, 0.04, 0.92), 0),
+                BackgroundTransparency = BACKGROUND_ANIMATION == "starlight" and 0.82 or 0.62
+            }):Play()
         end
-    end
-
-    if BACKGROUND_ANIMATION == "pulse" or BACKGROUND_ANIMATION == "starlight" or BACKGROUND_ANIMATION == "corners" then
-        TweenService:Create(ambientGlows[1], TweenInfo.new(2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 0.9 }):Play()
-    elseif BACKGROUND_ANIMATION == "ripple" then
-        task.delay(0.45, function()
-            if card.Parent then
-                TweenService:Create(cardStroke, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.24 }):Play()
+    elseif BACKGROUND_ANIMATION == "shimmer" or BACKGROUND_ANIMATION == "comet" then
+        local streak = Instance.new("Frame")
+        streak.Name = BACKGROUND_ANIMATION == "comet" and "VoidedXComet" or "VoidedXShimmer"
+        streak.Position = UDim2.new(-0.55, 0, BACKGROUND_ANIMATION == "comet" and 0.28 or 0.5, 0)
+        streak.Size = UDim2.new(BACKGROUND_ANIMATION == "comet" and 0.42 or 0.36, 0, 1.25, 0)
+        streak.Rotation = BACKGROUND_ANIMATION == "comet" and 16 or 9
+        streak.BackgroundColor3 = COL_ACCENT
+        streak.BackgroundTransparency = 0.35
+        streak.BorderSizePixel = 0
+        streak.ZIndex = 2
+        streak.Parent = animationLayer
+        local streakGradient = Instance.new("UIGradient")
+        streakGradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
+        streakGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.38, 0.62),
+            NumberSequenceKeypoint.new(0.52, 0.08),
+            NumberSequenceKeypoint.new(0.66, 0.62),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+        streakGradient.Parent = streak
+        task.spawn(function()
+            while animationLayer.Parent do
+                streak.Position = UDim2.new(-0.55, 0, BACKGROUND_ANIMATION == "comet" and 0.28 or 0.5, 0)
+                streak.BackgroundTransparency = 0.35
+                local sweep = TweenService:Create(streak, TweenInfo.new(BACKGROUND_ANIMATION == "comet" and 2.1 or 3.4, Enum.EasingStyle.Linear), {
+                    Position = UDim2.new(1.15, 0, BACKGROUND_ANIMATION == "comet" and 0.58 or 0.24, 0),
+                    BackgroundTransparency = 0.12
+                })
+                sweep:Play()
+                sweep.Completed:Wait()
+                task.wait(BACKGROUND_ANIMATION == "comet" and 0.55 or 0.8)
             end
         end)
+    elseif BACKGROUND_ANIMATION == "ripple" then
+        task.spawn(function()
+            local ringIndex = 0
+            while animationLayer.Parent do
+                ringIndex = ringIndex % 3 + 1
+                local ring = Instance.new("Frame")
+                ring.Name = "VoidedXRipple"
+                ring.AnchorPoint = Vector2.new(0.5, 0.5)
+                ring.Position = UDim2.new(ringIndex == 2 and 0.68 or 0.32, 0, ringIndex == 3 and 0.7 or 0.38, 0)
+                ring.Size = UDim2.new(0, 24, 0, 24)
+                ring.BackgroundTransparency = 1
+                ring.BorderSizePixel = 0
+                ring.ZIndex = 2
+                ring.Parent = animationLayer
+                local ringCorner = Instance.new("UICorner")
+                ringCorner.CornerRadius = UDim.new(1, 0)
+                ringCorner.Parent = ring
+                local ringStroke = Instance.new("UIStroke")
+                ringStroke.Color = ringIndex % 2 == 0 and COL_ACCENT or COL_CYAN
+                ringStroke.Thickness = 2
+                ringStroke.Transparency = 0.2
+                ringStroke.Parent = ring
+                local expand = TweenService:Create(ring, TweenInfo.new(2.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 230, 0, 230)
+                })
+                local fade = TweenService:Create(ringStroke, TweenInfo.new(2.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    Transparency = 1,
+                    Thickness = 1
+                })
+                expand:Play()
+                fade:Play()
+                task.delay(2.35, function()
+                    if ring.Parent then ring:Destroy() end
+                end)
+                task.wait(0.78)
+            end
+        end)
+    elseif BACKGROUND_ANIMATION == "corners" then
+        for index = 1, 4 do
+            local x = index % 2 == 0 and 1 or 0
+            local y = index > 2 and 1 or 0
+            local horizontal = Instance.new("Frame")
+            horizontal.AnchorPoint = Vector2.new(x, y)
+            horizontal.Position = UDim2.new(x == 1 and 1 or 0, x == 1 and -10 or 10, y == 1 and 1 or 0, y == 1 and -10 or 10)
+            horizontal.Size = UDim2.new(0.22, 0, 0, 2)
+            horizontal.BackgroundColor3 = index % 2 == 0 and COL_ACCENT or COL_CYAN
+            horizontal.BackgroundTransparency = 0.15
+            horizontal.BorderSizePixel = 0
+            horizontal.ZIndex = 2
+            horizontal.Parent = animationLayer
+            local vertical = horizontal:Clone()
+            vertical.Position = UDim2.new(x == 1 and 1 or 0, x == 1 and -10 or 10, y == 1 and 1 or 0, y == 1 and -10 or 10)
+            vertical.Size = UDim2.new(0, 2, 0, 42)
+            vertical.Parent = animationLayer
+            TweenService:Create(horizontal, TweenInfo.new(1.6 + index * 0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 0.62 }):Play()
+            TweenService:Create(vertical, TweenInfo.new(1.6 + index * 0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 0.62 }):Play()
+        end
+    else
+        animateGlow(firstGlow, firstGlowGradient, 8, UDim2.new(0.24, 0, 0.18, 0), UDim2.new(0.72, 0, 0.56, 0))
+        animateGlow(secondGlow, secondGlowGradient, 9.5, UDim2.new(0.04, 0, 0.36, 0), UDim2.new(0.68, 0, 0.54, 0))
     end
 end
 
