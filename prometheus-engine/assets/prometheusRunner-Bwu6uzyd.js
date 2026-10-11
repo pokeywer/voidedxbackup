@@ -10897,6 +10897,17 @@ local ok, outputOrError = xpcall(function()
     end
     config.Steps = compatibleSteps
   end
+  if config.LuaVersion == "LuaU" and ${e.preset === "Strong" ? `true` : `false`} then
+    -- Keep the stronger numeric representation pass exact for LuaU: avoid
+    -- scientific formatting and binary literals, which can change values or fail to parse.
+    for _, step in ipairs(config.Steps or {}) do
+      if step.Name == "NumbersToExpressions" then
+        step.Settings = step.Settings or {}
+        step.Settings.NumberRepresentationMutation = true
+        step.Settings.AllowedNumberRepresentations = { "hex", "normal" }
+      end
+    end
+  end
   config.PrettyPrint = ${e.prettyPrint?`true`:`false`}
   config.Seed = ${Math.max(1,Math.floor(e.seed))}
 

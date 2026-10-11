@@ -6,7 +6,7 @@ import {
 import {
     getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
-import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode } from './lua-medium.js';
+import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode, getUtf8ByteLength } from './lua-medium.js';
 
 // --- YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
@@ -26,6 +26,9 @@ let currentUser = null;
 let isSignUpMode = false;
 const ZERO_EXECUTION_VAULT_TTL_MS = 10 * 60 * 60 * 1000;
 const MAX_USER_VAULTS = 5;
+const MAX_VAULT_DOCUMENT_ESTIMATE_BYTES = 870 * 1024;
+const MAX_EDITOR_ANALYSIS_BYTES = 100 * 1024;
+const MAX_LINE_NUMBER_GUTTER_LINES = 50_000;
 const vaultExpiryTimers = new Map();
 const vaultExpiryWarningIds = new Set();
 let vaultsLoadedForUid = null;
@@ -826,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceCode.value = data.code || '';
         if (chkObfuscation) chkObfuscation.checked = data.obfuscationEnabled === true;
         if (obfuscationLevelSelect) {
-            obfuscationLevelSelect.value = ['auto', 'low', 'medium'].includes(data.obfuscationLevel) ? data.obfuscationLevel : 'auto';
+            obfuscationLevelSelect.value = ['auto', 'low', 'medium', 'high'].includes(data.obfuscationLevel) ? data.obfuscationLevel : 'auto';
         }
         setEditorDirty(false);
         setProtectionKeyStatus(!!data.requireKey);
@@ -872,10 +875,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------- Line numbers gutter ----------------
 
     function updateLineNumbers() {
-        const lineCount = sourceCode.value.split('\n').length;
-        let out = '';
-        for (let i = 1; i <= lineCount; i++) out += i + (i < lineCount ? '\n' : '');
-        lineNumbersEl.textContent = out || '1';
+        const code = sourceCode.value;
+        let lineCount = 1;
+        for (let index = code.indexOf('\n'); index >= 0; index = code.indexOf('\n', index + 1)) lineCount += 1;
+        if (lineCount > MAX_LINE_NUMBER_GUTTER_LINES) {
+            lineNumbersEl.textContent = '';
+            lineNumbersEl.style.visibility = 'hidden';
+            lineNumbersEl.title = 'Line numbers are hidden for files with more than 50,000 lines.';
+            return;
+        }
+        lineNumbersEl.style.visibility = '';
+        lineNumbersEl.title = '';
+        lineNumbersEl.textContent = Array.from({ length: lineCount }, (_, index) => String(index + 1)).join('\n');
     }
 
     const luauKeywords = new Set('and break do else elseif end false for function if in local nil not or repeat return then true until while continue type export'.split(' '));
@@ -1004,8 +1015,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderSyntaxHighlight() {
         if (!syntaxHighlightEl) return;
-        const result = scanLuau(sourceCode.value);
-        syntaxHighlightEl.innerHTML = result.html + (sourceCode.value.endsWith('\n') ? ' ' : '');
+        const code = sourceCode.value;
+        if (getUtf8ByteLength(code) > MAX_EDITOR_ANALYSIS_BYTES) {
+            syntaxHighlightEl.textContent = code + (code.endsWith('\n') ? ' ' : '');
+            syntaxHighlightEl.scrollTop = sourceCode.scrollTop;
+            syntaxHighlightEl.scrollLeft = sourceCode.scrollLeft;
+            return null;
+        }
+        const result = scanLuau(code);
+        syntaxHighlightEl.innerHTML = result.html + (code.endsWith('\n') ? ' ' : '');
         syntaxHighlightEl.scrollTop = sourceCode.scrollTop;
         syntaxHighlightEl.scrollLeft = sourceCode.scrollLeft;
         return result;
@@ -1083,7 +1101,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function runCodeCheck() {
-        const issues = checkLuauCode(sourceCode.value);
+        const source = sourceCode.value;
+        if (getUtf8ByteLength(source) > MAX_EDITOR_ANALYSIS_BYTES) {
+            diagnosticsList.replaceChildren();
+            diagnosticsSummary.textContent = 'Quick check skipped';
+            diagnosticsHint.textContent = 'Quick checks are limited to 100 KiB so large files stay responsive.';
+            const item = document.createElement('li');
+            item.className = 'code-diagnostic-item diagnostic-info';
+            item.textContent = 'The script is still available to save and obfuscate.';
+            diagnosticsList.appendChild(item);
+            diagnosticsPanel.classList.remove('hidden');
+            return;
+        }
+
+        const issues = checkLuauCode(source);
         diagnosticsList.replaceChildren();
         if (!sourceCode.value.trim()) issues.push({ severity: 'info', line: 1, column: 1, message: 'Paste some Luau code into the editor to check it.' });
         if (issues.length === 0) issues.push({ severity: 'info', line: 1, column: 1, message: 'No common issues found in this quick check.' });
@@ -1216,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const requestedObfuscationLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
         const effectiveObfuscationLevel = resolveObfuscationLevel(code, requestedObfuscationLevel);
         if (obfuscationEnabled) {
-            lockBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING...';
+            lockBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING ${effectiveObfuscationLevel.toUpperCase()}...`;
             try {
                 const transformed = await obfuscateLua(code, effectiveObfuscationLevel);
                 encodedObfuscatedCode = await encodeObfuscatedCode(transformed);
@@ -1277,6 +1308,16 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            const estimatedDocumentBytes = getUtf8ByteLength(JSON.stringify(payload));
+            if (estimatedDocumentBytes > MAX_VAULT_DOCUMENT_ESTIMATE_BYTES) {
+                const estimatedKiB = Math.ceil(estimatedDocumentBytes / 1024).toLocaleString();
+                const sizeHint = obfuscationEnabled
+                    ? 'Reduce the script or turn off obfuscation.'
+                    : 'Reduce the script size.';
+                showToast(`This vault is about ${estimatedKiB} KiB, above the safe storage size (~870 KiB). ${sizeHint}`, 'error', 10000);
+                return;
+            }
+
             await setDoc(doc(db, "vaults", vaultId), payload);
             const savedVault = { id: vaultId, data: payload };
             const savedIndex = cachedVaults.findIndex(vault => vault.id === vaultId);

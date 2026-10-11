@@ -70,15 +70,14 @@ export default async function handler(req, res) {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
         if (!vaultData.requireKey) {
-            if (typeof executionCode === 'string' && executionCode.trim()) {
+            const directDelivery = !!userId || req.query.format === 'raw';
+            if (directDelivery && typeof executionCode === 'string' && executionCode.trim()) {
                 try { await recordExecution(db.collection('vaults').doc(String(id)), id, vaultData.title, userId); } catch (e) {}
             }
             if (typeof executionCode !== 'string' || !executionCode.trim()) {
                 return res.status(200).send(executionCode);
             }
-            const deliveredCode = userId
-                ? executionCode
-                : buildTrackedScript(id, getOrigin(req), executionCode);
+            const deliveredCode = directDelivery ? executionCode : buildTrackedScript(id, getOrigin(req));
             return res.status(200).send(deliveredCode);
         }
 
@@ -134,20 +133,24 @@ loadstring(result.code)()
 `.trim();
 }
 
-function buildTrackedScript(id, origin, code) {
-    const trackUrl = `${origin}/api/raw?id=${encodeURIComponent(id)}&trackOnly=1&userId=`;
+function buildTrackedScript(id, origin) {
+    const deliveryUrl = `${origin}/api/raw?id=${encodeURIComponent(id)}&format=raw`;
     return `
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-if player then
-    task.spawn(function()
-        pcall(function()
-            game:HttpGet(${luaString(trackUrl)} .. tostring(player.UserId))
-        end)
-    end)
-end
+local deliveryUrl = ${luaString(deliveryUrl)}
+if player then deliveryUrl = deliveryUrl .. "&userId=" .. tostring(player.UserId) end
 
-local scriptChunk, compileError = loadstring(${luaString(code)})
+local requestOk, source = pcall(function()
+    return game:HttpGet(deliveryUrl)
+end)
+if not requestOk then
+    error("[VoidedX] Could not download the script: " .. tostring(source), 0)
+end
+if type(source) ~= "string" then
+    error("[VoidedX] The server returned an invalid script.", 0)
+end
+local scriptChunk, compileError = loadstring(source)
 if not scriptChunk then
     error("[VoidedX] " .. tostring(compileError), 0)
 end

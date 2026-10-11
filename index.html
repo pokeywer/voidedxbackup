@@ -106,7 +106,7 @@
                     </div>
                     <div class="toggle-list">
                         <label class="toggle-row">
-                            <span class="toggle-label-stack"><span>Lua obfuscation</span><small>Auto · Low / Medium</small></span>
+                            <span class="toggle-label-stack"><span>Lua obfuscation</span><small>Auto · Low / Medium / High</small></span>
                             <input type="checkbox" id="chk-obfuscation">
                             <span class="switch"></span>
                         </label>
@@ -116,6 +116,7 @@
                                 <option value="auto" selected>Auto (recommended)</option>
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
+                                <option value="high">High (slower)</option>
                             </select>
                         </div>
                         <label class="toggle-row">
@@ -124,7 +125,7 @@
                             <span class="switch"></span>
                         </label>
                     </div>
-                    <p class="obfuscation-note">Auto uses Medium up to 10,000 characters and Low for longer scripts. Choose Low or Medium to override. Your readable source stays in the editor; the generated copy is sent on execution.</p>
+                    <p class="obfuscation-note">Auto uses Medium up to 10 KiB and Low above. High adds extra number obfuscation and can take longer. Obfuscation accepts scripts up to 700 KiB; the source and generated copy must fit a safe vault size of about 870 KiB. Your readable source stays in the editor; the generated copy is sent on execution.</p>
                     <button type="button" id="backup-now-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-download"></i> Download backup now</button>
                     <div class="protection-hint">
                         <i class="fa-solid fa-shield-halved"></i>
@@ -161,7 +162,7 @@
                 </div>
                 <div class="editor-tools" aria-label="Script editor tools">
                     <span class="editor-language"><span class="language-dot"></span> LUAU</span>
-                    <span class="editor-tools-hint">Syntax colors are a guide; run a check for common issues.</span>
+                    <span class="editor-tools-hint">Syntax colors are a guide; large files use plain text to keep editing responsive.</span>
                     <button id="check-code-btn" class="check-code-btn" type="button"><i class="fa-solid fa-stethoscope"></i> Check code</button>
                 </div>
                 <div class="code-editor-wrap">
