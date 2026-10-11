@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const guiSecondaryColor = document.getElementById('gui-secondary-color');
     const guiBackgroundColor = document.getElementById('gui-background-color');
     const guiTextColor = document.getElementById('gui-text-color');
+    const guiBackgroundAnimation = document.getElementById('gui-background-animation');
     const guiPreviewCard = document.getElementById('gui-preview-card');
     const guiPreviewScreen = document.getElementById('gui-preview-screen');
     const guiPreviewAccent = document.getElementById('gui-preview-accent');
@@ -197,24 +198,25 @@ document.addEventListener('DOMContentLoaded', () => {
         secondaryColor: '#6366f1',
         backgroundColor: '#0b0d12',
         textColor: '#f8fafc',
+        backgroundAnimation: 'aurora',
         templateId: 'custom'
     };
 
     const guiTemplates = [
-        { id: 'cyber-neon', name: 'Cyber Neon', mood: 'Electric cyan', icon: 'fa-bolt', title: 'VOIDEDX ACCESS', subtitle: 'Enter your key to unlock', buttonLabel: 'VERIFY KEY', accentColor: '#00e5c0', secondaryColor: '#31a8ff', backgroundColor: '#080d16', textColor: '#edfffe' },
-        { id: 'ultraviolet', name: 'Ultraviolet', mood: 'Purple haze', icon: 'fa-wand-magic-sparkles', title: 'NOVA ACCESS', subtitle: 'Your next level starts here', buttonLabel: 'UNLOCK ACCESS', accentColor: '#a855f7', secondaryColor: '#ec4899', backgroundColor: '#100b1b', textColor: '#faf5ff' },
-        { id: 'arctic', name: 'Arctic Pulse', mood: 'Ice blue', icon: 'fa-snowflake', title: 'ARCTIC KEY SYSTEM', subtitle: 'Enter your key to continue', buttonLabel: 'CONTINUE', accentColor: '#38bdf8', secondaryColor: '#818cf8', backgroundColor: '#07131f', textColor: '#effaff' },
-        { id: 'toxic', name: 'Toxic Lime', mood: 'Radioactive green', icon: 'fa-biohazard', title: 'TOXIC ACCESS', subtitle: 'Key required to proceed', buttonLabel: 'ACTIVATE', accentColor: '#a3e635', secondaryColor: '#22c55e', backgroundColor: '#0a1108', textColor: '#f7fee7' },
-        { id: 'sunset', name: 'Afterglow', mood: 'Pink to amber', icon: 'fa-sun', title: 'AFTERGLOW ACCESS', subtitle: 'A little light before launch', buttonLabel: 'LET ME IN', accentColor: '#fb7185', secondaryColor: '#f59e0b', backgroundColor: '#190c15', textColor: '#fff1f2' },
-        { id: 'royal', name: 'Royal Orbit', mood: 'Regal violet', icon: 'fa-crown', title: 'ROYAL ACCESS', subtitle: 'Enter your private key', buttonLabel: 'VERIFY ACCESS', accentColor: '#8b5cf6', secondaryColor: '#2563eb', backgroundColor: '#0d0b19', textColor: '#f5f3ff' },
-        { id: 'crimson', name: 'Crimson Ops', mood: 'Red alert', icon: 'fa-crosshairs', title: 'CRIMSON PROTOCOL', subtitle: 'Authentication required', buttonLabel: 'AUTHORIZE', accentColor: '#f43f5e', secondaryColor: '#fb7185', backgroundColor: '#16090d', textColor: '#fff1f2' },
-        { id: 'emerald', name: 'Emerald Core', mood: 'Deep green', icon: 'fa-gem', title: 'EMERALD ACCESS', subtitle: 'Your key opens the door', buttonLabel: 'VERIFY KEY', accentColor: '#10b981', secondaryColor: '#2dd4bf', backgroundColor: '#07140f', textColor: '#ecfdf5' },
-        { id: 'gold', name: 'Solar Gold', mood: 'Gold and fire', icon: 'fa-star', title: 'SOLAR ACCESS', subtitle: 'A key is needed to continue', buttonLabel: 'UNLOCK', accentColor: '#fbbf24', secondaryColor: '#f97316', backgroundColor: '#181007', textColor: '#fffbeb' },
-        { id: 'sakura', name: 'Sakura Dream', mood: 'Blush pink', icon: 'fa-heart', title: 'SAKURA ACCESS', subtitle: 'Welcome, enter your key', buttonLabel: 'OPEN GATE', accentColor: '#f472b6', secondaryColor: '#c084fc', backgroundColor: '#190d18', textColor: '#fdf2f8' },
-        { id: 'ocean', name: 'Ocean Drive', mood: 'Aqua blue', icon: 'fa-water', title: 'OCEAN ACCESS', subtitle: 'Dive in with your key', buttonLabel: 'DIVE IN', accentColor: '#06b6d4', secondaryColor: '#3b82f6', backgroundColor: '#071217', textColor: '#ecfeff' },
-        { id: 'stealth', name: 'Stealth Mono', mood: 'Clean monochrome', icon: 'fa-moon', title: 'STEALTH ACCESS', subtitle: 'A quiet place for your key', buttonLabel: 'PROCEED', accentColor: '#94a3b8', secondaryColor: '#e2e8f0', backgroundColor: '#0b0d12', textColor: '#f8fafc' },
-        { id: 'aurora', name: 'Aurora Flow', mood: 'Mint and violet', icon: 'fa-wand-sparkles', title: 'AURORA ACCESS', subtitle: 'Enter your key to continue', buttonLabel: 'LIGHT IT UP', accentColor: '#34d399', secondaryColor: '#818cf8', backgroundColor: '#09121a', textColor: '#ecfdf5' },
-        { id: 'hologram', name: 'Hologram', mood: 'Prismatic cyan', icon: 'fa-cube', title: 'HOLOGRAM ACCESS', subtitle: 'Identity check required', buttonLabel: 'VERIFY ID', accentColor: '#22d3ee', secondaryColor: '#c084fc', backgroundColor: '#0b0c18', textColor: '#f0fdff' }
+        { id: 'cyber-neon', name: 'Cyber Neon', mood: 'Electric cyan · Aurora drift', icon: 'fa-bolt', title: 'VOIDEDX ACCESS', subtitle: 'Enter your key to unlock', buttonLabel: 'VERIFY KEY', accentColor: '#00e5c0', secondaryColor: '#31a8ff', backgroundColor: '#080d16', textColor: '#edfffe', backgroundAnimation: 'aurora' },
+        { id: 'ultraviolet', name: 'Ultraviolet', mood: 'Purple haze · Prism shimmer', icon: 'fa-wand-magic-sparkles', title: 'NOVA ACCESS', subtitle: 'Your next level starts here', buttonLabel: 'UNLOCK ACCESS', accentColor: '#a855f7', secondaryColor: '#ec4899', backgroundColor: '#100b1b', textColor: '#faf5ff', backgroundAnimation: 'shimmer' },
+        { id: 'arctic', name: 'Arctic Pulse', mood: 'Ice blue · Breathing glow', icon: 'fa-snowflake', title: 'ARCTIC KEY SYSTEM', subtitle: 'Enter your key to continue', buttonLabel: 'CONTINUE', accentColor: '#38bdf8', secondaryColor: '#818cf8', backgroundColor: '#07131f', textColor: '#effaff', backgroundAnimation: 'pulse' },
+        { id: 'toxic', name: 'Toxic Lime', mood: 'Radioactive green · Light sweep', icon: 'fa-biohazard', title: 'TOXIC ACCESS', subtitle: 'Key required to proceed', buttonLabel: 'ACTIVATE', accentColor: '#a3e635', secondaryColor: '#22c55e', backgroundColor: '#0a1108', textColor: '#f7fee7', backgroundAnimation: 'scanline' },
+        { id: 'sunset', name: 'Afterglow', mood: 'Pink to amber · Soft waves', icon: 'fa-sun', title: 'AFTERGLOW ACCESS', subtitle: 'A little light before launch', buttonLabel: 'LET ME IN', accentColor: '#fb7185', secondaryColor: '#f59e0b', backgroundColor: '#190c15', textColor: '#fff1f2', backgroundAnimation: 'waves' },
+        { id: 'royal', name: 'Royal Orbit', mood: 'Regal violet · Orbiting gradient', icon: 'fa-crown', title: 'ROYAL ACCESS', subtitle: 'Enter your private key', buttonLabel: 'VERIFY ACCESS', accentColor: '#8b5cf6', secondaryColor: '#2563eb', backgroundColor: '#0d0b19', textColor: '#f5f3ff', backgroundAnimation: 'orbit' },
+        { id: 'crimson', name: 'Crimson Ops', mood: 'Red alert · Light sweep', icon: 'fa-crosshairs', title: 'CRIMSON PROTOCOL', subtitle: 'Authentication required', buttonLabel: 'AUTHORIZE', accentColor: '#f43f5e', secondaryColor: '#fb7185', backgroundColor: '#16090d', textColor: '#fff1f2', backgroundAnimation: 'scanline' },
+        { id: 'emerald', name: 'Emerald Core', mood: 'Deep green · Aurora drift', icon: 'fa-gem', title: 'EMERALD ACCESS', subtitle: 'Your key opens the door', buttonLabel: 'VERIFY KEY', accentColor: '#10b981', secondaryColor: '#2dd4bf', backgroundColor: '#07140f', textColor: '#ecfdf5', backgroundAnimation: 'aurora' },
+        { id: 'gold', name: 'Solar Gold', mood: 'Gold and fire · Starlight', icon: 'fa-star', title: 'SOLAR ACCESS', subtitle: 'A key is needed to continue', buttonLabel: 'UNLOCK', accentColor: '#fbbf24', secondaryColor: '#f97316', backgroundColor: '#181007', textColor: '#fffbeb', backgroundAnimation: 'starlight' },
+        { id: 'sakura', name: 'Sakura Dream', mood: 'Blush pink · Soft waves', icon: 'fa-heart', title: 'SAKURA ACCESS', subtitle: 'Welcome, enter your key', buttonLabel: 'OPEN GATE', accentColor: '#f472b6', secondaryColor: '#c084fc', backgroundColor: '#190d18', textColor: '#fdf2f8', backgroundAnimation: 'waves' },
+        { id: 'ocean', name: 'Ocean Drive', mood: 'Aqua blue · Orbiting gradient', icon: 'fa-water', title: 'OCEAN ACCESS', subtitle: 'Dive in with your key', buttonLabel: 'DIVE IN', accentColor: '#06b6d4', secondaryColor: '#3b82f6', backgroundColor: '#071217', textColor: '#ecfeff', backgroundAnimation: 'orbit' },
+        { id: 'stealth', name: 'Stealth Mono', mood: 'Clean monochrome · Still', icon: 'fa-moon', title: 'STEALTH ACCESS', subtitle: 'A quiet place for your key', buttonLabel: 'PROCEED', accentColor: '#94a3b8', secondaryColor: '#e2e8f0', backgroundColor: '#0b0d12', textColor: '#f8fafc', backgroundAnimation: 'none' },
+        { id: 'aurora', name: 'Aurora Flow', mood: 'Mint and violet · Aurora drift', icon: 'fa-wand-sparkles', title: 'AURORA ACCESS', subtitle: 'Enter your key to continue', buttonLabel: 'LIGHT IT UP', accentColor: '#34d399', secondaryColor: '#818cf8', backgroundColor: '#09121a', textColor: '#ecfdf5', backgroundAnimation: 'aurora' },
+        { id: 'hologram', name: 'Hologram', mood: 'Prismatic cyan · Prism shimmer', icon: 'fa-cube', title: 'HOLOGRAM ACCESS', subtitle: 'Identity check required', buttonLabel: 'VERIFY ID', accentColor: '#22d3ee', secondaryColor: '#c084fc', backgroundColor: '#0b0c18', textColor: '#f0fdff', backgroundAnimation: 'shimmer' }
     ];
     let selectedGuiTemplate = 'custom';
 
@@ -238,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 guiSecondaryColor.value = template.secondaryColor;
                 guiBackgroundColor.value = template.backgroundColor;
                 guiTextColor.value = template.textColor;
+                guiBackgroundAnimation.value = template.backgroundAnimation;
                 selectedGuiTemplate = template.id;
                 renderGuiTemplateGallery();
                 renderGuiPreview();
@@ -255,11 +258,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderGuiPreview() {
         const accent = guiAccentColor.value || defaultGuiAppearance.accentColor;
         const glow = guiSecondaryColor.value || defaultGuiAppearance.secondaryColor;
+        const background = guiBackgroundColor.value || defaultGuiAppearance.backgroundColor;
+        const chosenText = guiTextColor.value || defaultGuiAppearance.textColor;
+        const readableText = getReadableTextColor(chosenText, background);
+        if (readableText !== chosenText) guiTextColor.value = readableText;
         const gradient = `linear-gradient(135deg, ${accent}, ${glow})`;
-        guiPreviewCard.style.backgroundColor = guiBackgroundColor.value || defaultGuiAppearance.backgroundColor;
-        guiPreviewCard.style.color = guiTextColor.value || defaultGuiAppearance.textColor;
+        guiPreviewCard.style.backgroundColor = background;
+        guiPreviewCard.style.color = readableText;
+        const animation = guiBackgroundAnimation.value || defaultGuiAppearance.backgroundAnimation;
+        guiPreviewCard.dataset.backgroundAnimation = animation;
         guiPreviewCard.style.borderColor = `${accent}66`;
         guiPreviewCard.style.setProperty('--template-accent', accent);
+        guiPreviewCard.style.setProperty('--template-glow', glow);
         guiPreviewAccent.style.background = `linear-gradient(90deg, ${accent}, ${glow})`;
         guiPreviewBadge.style.background = gradient;
         guiPreviewButton.style.background = gradient;
@@ -272,6 +282,23 @@ document.addEventListener('DOMContentLoaded', () => {
         guiPreviewTitle.textContent = guiTitleInput.value.trim() || defaultGuiAppearance.title;
         guiPreviewSubtitle.textContent = guiSubtitleInput.value.trim() || defaultGuiAppearance.subtitle;
         guiPreviewButtonText.textContent = guiButtonInput.value.trim() || defaultGuiAppearance.buttonLabel;
+    }
+
+    function getReadableTextColor(foreground, background) {
+        const linear = channel => {
+            const value = channel / 255;
+            return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = hex => {
+            const values = hex.slice(1).match(/.{2}/g).map(value => parseInt(value, 16));
+            return 0.2126 * linear(values[0]) + 0.7152 * linear(values[1]) + 0.0722 * linear(values[2]);
+        };
+        const contrast = (first, second) => {
+            const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+            return (values[0] + 0.05) / (values[1] + 0.05);
+        };
+        if (contrast(foreground, background) >= 4.5) return foreground;
+        return contrast('#f8fafc', background) >= contrast('#111827', background) ? '#f8fafc' : '#111827';
     }
 
     let guiPreviewRun = 0;
@@ -356,6 +383,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 guiPreviewCard.classList.add('is-hidden');
                 guiPreviewTimer.classList.remove('hidden');
                 requestAnimationFrame(() => guiPreviewTimer.classList.add('is-active'));
+                guiPreviewTimeout = setTimeout(() => {
+                    if (run !== guiPreviewRun) return;
+                    guiPreviewTimer.classList.remove('is-active');
+                    setTimeout(() => {
+                        if (run === guiPreviewRun) guiPreviewTimer.classList.add('hidden');
+                    }, 320);
+                }, 5000);
             }, 420);
         }, 850);
     }
@@ -395,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderGuiTemplateGallery();
-    [guiTitleInput, guiSubtitleInput, guiButtonInput, guiAccentColor, guiSecondaryColor, guiBackgroundColor, guiTextColor]
+    [guiTitleInput, guiSubtitleInput, guiButtonInput, guiAccentColor, guiSecondaryColor, guiBackgroundColor, guiTextColor, guiBackgroundAnimation]
         .forEach(input => input.addEventListener('input', markGuiAppearanceCustom));
     chkGuiMode.addEventListener('change', () => {
         setGuiCustomizerVisible();
@@ -870,6 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
             guiSecondaryColor.value = appearance.secondaryColor;
             guiBackgroundColor.value = appearance.backgroundColor;
             guiTextColor.value = appearance.textColor;
+            guiBackgroundAnimation.value = appearance.backgroundAnimation;
             setGuiCustomizerVisible();
             renderGuiTemplateGallery();
             renderGuiPreview();
@@ -933,6 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
             secondaryColor: guiSecondaryColor.value,
             backgroundColor: guiBackgroundColor.value,
             textColor: guiTextColor.value,
+            backgroundAnimation: guiBackgroundAnimation.value,
             templateId: selectedGuiTemplate
         };
         const privateKeysPayload = requireKey ? currentKeys.map(k => ({

@@ -895,7 +895,14 @@ textarea { flex: 1; min-width: 0; min-height: 0; width: 100%; background: var(--
 .gui-preview-heading .panel-label { margin: 0; }
 .gui-preview-note { color: #6f7d94; font-size: 9px; }
 .gui-preview-screen { position: relative; min-height: 390px; overflow: hidden; }
-.gui-preview-card { width: min(100%, 350px); gap: 9px; padding: 20px 18px 15px; overflow: hidden; border-radius: 18px; text-align: left; transform-origin: center; transition: opacity .24s ease, transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease; }
+.gui-preview-card { width: min(100%, 350px); gap: 9px; padding: 20px 18px 15px; overflow: hidden; border-radius: 18px; background-size: 180% 180%; text-align: left; transform-origin: center; transition: opacity .24s ease, transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease; }
+.gui-preview-card[data-background-animation="aurora"] { background-image: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--template-accent) 18%, transparent), transparent 58%), radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--template-glow) 20%, transparent), transparent 56%); animation: gui-preview-aurora 12s ease-in-out infinite alternate; }
+.gui-preview-card[data-background-animation="orbit"] { background-image: conic-gradient(from 0deg at 50% 50%, color-mix(in srgb, var(--template-accent) 15%, transparent), transparent 28%, color-mix(in srgb, var(--template-glow) 20%, transparent), transparent 72%); animation: gui-preview-orbit 14s linear infinite; }
+.gui-preview-card[data-background-animation="waves"] { background-image: linear-gradient(135deg, color-mix(in srgb, var(--template-accent) 14%, transparent), transparent 48%, color-mix(in srgb, var(--template-glow) 17%, transparent)); animation: gui-preview-waves 8s ease-in-out infinite alternate; }
+.gui-preview-card[data-background-animation="pulse"] { animation: gui-preview-breathe 2.6s ease-in-out infinite; }
+.gui-preview-card[data-background-animation="scanline"] { background-image: linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--template-accent) 14%, transparent) 50%, transparent 65%); animation: gui-preview-sweep 4s linear infinite; }
+.gui-preview-card[data-background-animation="starlight"] { background-image: radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--template-accent) 23%, transparent), transparent 4%), radial-gradient(circle at 84% 35%, color-mix(in srgb, var(--template-glow) 22%, transparent), transparent 5%), radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--template-accent) 12%, transparent), transparent 58%); animation: gui-preview-aurora 9s ease-in-out infinite alternate; }
+.gui-preview-card[data-background-animation="shimmer"] { background-image: linear-gradient(125deg, transparent 20%, color-mix(in srgb, var(--template-accent) 14%, transparent) 48%, color-mix(in srgb, var(--template-glow) 12%, transparent) 56%, transparent 75%); animation: gui-preview-sweep 5s linear infinite; }
 .gui-preview-card.is-entering { animation: gui-preview-enter .52s cubic-bezier(.18,.84,.26,1.18) both; }
 .gui-preview-card.is-hidden { opacity: 0; transform: translateY(22px) scale(.94); pointer-events: none; }
 .gui-preview-card.is-success { box-shadow: 0 0 0 1px color-mix(in srgb, var(--template-accent, #06b6d4) 35%, transparent), 0 0 35px color-mix(in srgb, var(--template-accent, #06b6d4) 25%, transparent), 0 18px 40px rgba(0,0,0,.5); }
@@ -928,11 +935,11 @@ textarea { flex: 1; min-width: 0; min-height: 0; width: 100%; background: var(--
 .gui-preview-status.visible { max-height: 32px; opacity: 1; transform: translateY(0); }
 .gui-preview-status.is-success { color: #6ee7b7; }
 .gui-preview-footer { color: #58657a !important; font-size: 7px !important; font-weight: 800; letter-spacing: .12em; text-align: center; }
-.gui-preview-timer { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 205px; padding: 13px 15px; border: 1px solid var(--template-accent, #06b6d4); border-radius: 12px; background: #0b1019; box-shadow: 0 12px 35px rgba(0,0,0,.45); opacity: 0; transform: translateY(14px) scale(.95); transition: opacity .3s ease, transform .35s cubic-bezier(.18,.84,.26,1.18); }
+.gui-preview-timer { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 5px; min-width: 220px; max-width: calc(100% - 24px); padding: 15px 17px; border: 1px solid var(--template-accent, #06b6d4); border-radius: 12px; background: #0b1019; box-shadow: 0 12px 35px rgba(0,0,0,.45); opacity: 0; transform: translateY(14px) scale(.95); transition: opacity .3s ease, transform .35s cubic-bezier(.18,.84,.26,1.18); }
 .gui-preview-timer.is-active { opacity: 1; transform: translateY(0) scale(1); }
-.gui-preview-timer small { color: var(--template-accent, #06b6d4); font-size: 8px; font-weight: 800; letter-spacing: .12em; }
-.gui-preview-timer strong { color: #e5edf8; font-size: 11px; }
-.gui-preview-timer span { color: #8794a8; font-size: 9px; }
+.gui-preview-timer small { color: #6ee7b7; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.gui-preview-timer strong { color: #f1f5fb; font-size: 12px; }
+.gui-preview-timer span { color: #bac7d8; font-size: 10px; }
 .gui-preview-closed { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; border: 0; background: transparent; color: #9aa8ba; font: inherit; text-align: center; cursor: pointer; animation: gui-preview-fade .25s ease both; }
 .gui-preview-closed i { color: #64748b; font-size: 24px; }
 .gui-preview-closed strong { color: #e2e8f0; font-size: 13px; }
@@ -948,5 +955,10 @@ textarea { flex: 1; min-width: 0; min-height: 0; width: 100%; background: var(--
 @keyframes gui-preview-spin { to { transform: rotate(360deg); } }
 @keyframes gui-preview-tap { 35% { transform: scale(.96); } 70% { transform: scale(1.025); } }
 @keyframes gui-preview-fade { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: scale(1); } }
+@keyframes gui-preview-aurora { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+@keyframes gui-preview-orbit { to { filter: hue-rotate(360deg); } }
+@keyframes gui-preview-waves { from { background-position: 0% 20%; } to { background-position: 100% 80%; } }
+@keyframes gui-preview-breathe { 0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--template-accent, #06b6d4) 15%, transparent); } 50% { box-shadow: 0 0 24px color-mix(in srgb, var(--template-accent, #06b6d4) 22%, transparent); } }
+@keyframes gui-preview-sweep { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
 @media (max-width: 520px) { .gui-preview-screen { min-height: 365px; padding: 10px; } .gui-preview-card { padding: 18px 14px 13px; } .gui-preview-note { max-width: 105px; text-align: right; } .gui-preview-control { padding-inline: 6px; font-size: 9px; } }
 @media (prefers-reduced-motion: reduce) { .gui-preview-card, .gui-preview-badge, .gui-preview-accent, .gui-preview-button, .gui-preview-getkey, .gui-preview-timer, .gui-preview-closed { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

@@ -188,6 +188,7 @@ function buildGuiLoader(id, origin, rawAppearance = {}, rawVaultName = '') {
     const [accentR, accentG, accentB] = toRgb(appearance.accentColor);
     const [glowR, glowG, glowB] = toRgb(appearance.secondaryColor);
     const [textR, textG, textB] = toRgb(appearance.textColor);
+    const backgroundAnimation = appearance.backgroundAnimation;
     return `
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -238,9 +239,10 @@ local COL_BORDER = Color3.fromRGB(33, 38, 53)
 local COL_CYAN = Color3.fromRGB(${accentR}, ${accentG}, ${accentB})
 local COL_ACCENT = Color3.fromRGB(${glowR}, ${glowG}, ${glowB})
 local COL_TEXT = Color3.fromRGB(${textR}, ${textG}, ${textB})
-local COL_MUTED = Color3.fromRGB(100, 116, 139)
+local COL_MUTED = COL_TEXT:Lerp(COL_BG, 0.28)
 local COL_RED = Color3.fromRGB(239, 68, 68)
 local COL_GREEN = Color3.fromRGB(16, 185, 129)
+local BACKGROUND_ANIMATION = ${luaString(backgroundAnimation)}
 
 local EASE_OUT = Enum.EasingStyle.Quint
 local EASE_BACK = Enum.EasingStyle.Back
@@ -289,7 +291,26 @@ cardStroke.Parent = card
 local cardGradient = Instance.new("UIGradient")
 cardGradient.Rotation = 90
 cardGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
+if BACKGROUND_ANIMATION ~= "none" then
+    cardGradient.Color = ColorSequence.new(COL_BG:Lerp(COL_CYAN, 0.1), COL_BG:Lerp(COL_ACCENT, 0.15))
+    cardGradient.Transparency = NumberSequence.new(0.38)
+end
 cardGradient.Parent = card
+if BACKGROUND_ANIMATION == "aurora" then
+    TweenService:Create(cardGradient, TweenInfo.new(18, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+elseif BACKGROUND_ANIMATION == "orbit" then
+    TweenService:Create(cardGradient, TweenInfo.new(12, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -270 }):Play()
+elseif BACKGROUND_ANIMATION == "waves" then
+    TweenService:Create(cardGradient, TweenInfo.new(9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 210 }):Play()
+elseif BACKGROUND_ANIMATION == "starlight" then
+    TweenService:Create(cardGradient, TweenInfo.new(16, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 150 }):Play()
+elseif BACKGROUND_ANIMATION == "pulse" then
+    TweenService:Create(card, TweenInfo.new(2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundColor3 = COL_BG:Lerp(COL_CYAN, 0.12) }):Play()
+elseif BACKGROUND_ANIMATION == "scanline" then
+    TweenService:Create(cardGradient, TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+elseif BACKGROUND_ANIMATION == "shimmer" then
+    TweenService:Create(cardGradient, TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = -360 }):Play()
+end
 
 local uiScale = Instance.new("UIScale")
 uiScale.Scale = 0.88
@@ -361,6 +382,11 @@ local accentGradient = Instance.new("UIGradient")
 accentGradient.Rotation = 0
 accentGradient.Color = ColorSequence.new(COL_CYAN, COL_ACCENT)
 accentGradient.Parent = accentBar
+if BACKGROUND_ANIMATION == "scanline" then
+    TweenService:Create(accentGradient, TweenInfo.new(2.8, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 180 }):Play()
+elseif BACKGROUND_ANIMATION == "shimmer" then
+    TweenService:Create(accentGradient, TweenInfo.new(4.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+end
 
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, 0, 0, 0)
@@ -695,18 +721,15 @@ local function formatKeyTime(seconds)
     local days = math.floor(seconds / 86400)
     local hours = math.floor((seconds % 86400) / 3600)
     local minutes = math.floor((seconds % 3600) / 60)
-    if days > 0 then return string.format("%dd %dh", days, hours) end
-    if hours > 0 then return string.format("%dh %dm", hours, minutes) end
-    if seconds < 60 then return string.format("%ds", seconds) end
-    return string.format("%dm", minutes)
-end
-
-local function formatExpiryDate(expiresAtMs)
-    local ok, value = pcall(function()
-        return os.date("!%Y-%m-%d %H:%M UTC", math.floor(expiresAtMs / 1000))
-    end)
-    if ok and type(value) == "string" then return value end
-    return "date unavailable"
+    local years = math.floor(days / 365)
+    days = days % 365
+    local parts = {}
+    if years > 0 then table.insert(parts, string.format("%dy", years)) end
+    if days > 0 then table.insert(parts, string.format("%dd", days)) end
+    if hours > 0 then table.insert(parts, string.format("%dh", hours)) end
+    if minutes > 0 then table.insert(parts, string.format("%dm", minutes)) end
+    if #parts == 0 then return string.format("%ds", seconds) end
+    return table.concat(parts, " ")
 end
 
 local function showKeyTimer(remainingSeconds, fileSaved, expiresAtMs)
@@ -718,7 +741,7 @@ local function showKeyTimer(remainingSeconds, fileSaved, expiresAtMs)
     local panel = Instance.new("Frame")
     panel.AnchorPoint = Vector2.new(1, 1)
     panel.Position = UDim2.new(1, -14, 1, 20)
-    panel.Size = UDim2.new(0, panelWidth, 0, 82)
+    panel.Size = UDim2.new(0, panelWidth, 0, 91)
     panel.BackgroundColor3 = COL_BG
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
@@ -741,42 +764,42 @@ local function showKeyTimer(remainingSeconds, fileSaved, expiresAtMs)
     TweenService:Create(panelScale, TweenInfo.new(0.36, EASE_BACK), { Scale = 1 }):Play()
 
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Position = UDim2.new(0, 11, 0, 6)
-    nameLabel.Size = UDim2.new(1, -38, 0, 17)
+    nameLabel.Position = UDim2.new(0, 12, 0, 7)
+    nameLabel.Size = UDim2.new(1, -42, 0, 18)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = ${luaString(vaultName)}
-    nameLabel.TextColor3 = COL_TEXT
+    nameLabel.Text = "KEY UNLOCKED"
+    nameLabel.TextColor3 = COL_GREEN
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 11
+    nameLabel.TextSize = 12
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
     nameLabel.Parent = panel
 
     local timerLabel = Instance.new("TextLabel")
-    timerLabel.Position = UDim2.new(0, 11, 0, 25)
-    timerLabel.Size = UDim2.new(1, -24, 0, 16)
+    timerLabel.Position = UDim2.new(0, 12, 0, 29)
+    timerLabel.Size = UDim2.new(1, -24, 0, 17)
     timerLabel.BackgroundTransparency = 1
-    timerLabel.TextColor3 = COL_CYAN
+    timerLabel.TextColor3 = COL_TEXT
     timerLabel.Font = Enum.Font.Gotham
-    timerLabel.TextSize = 10
+    timerLabel.TextSize = 11
     timerLabel.TextXAlignment = Enum.TextXAlignment.Left
     timerLabel.TextTruncate = Enum.TextTruncate.AtEnd
     timerLabel.Parent = panel
 
     local expiryLabel = Instance.new("TextLabel")
-    expiryLabel.Position = UDim2.new(0, 11, 0, 42)
-    expiryLabel.Size = UDim2.new(1, -22, 0, 14)
+    expiryLabel.Position = UDim2.new(0, 12, 0, 49)
+    expiryLabel.Size = UDim2.new(1, -24, 0, 16)
     expiryLabel.BackgroundTransparency = 1
-    expiryLabel.TextColor3 = COL_MUTED
+    expiryLabel.TextColor3 = COL_TEXT
     expiryLabel.Font = Enum.Font.Gotham
-    expiryLabel.TextSize = 9
+    expiryLabel.TextSize = 10
     expiryLabel.TextXAlignment = Enum.TextXAlignment.Left
     expiryLabel.TextTruncate = Enum.TextTruncate.AtEnd
     expiryLabel.Parent = panel
 
     local fileLabel = Instance.new("TextLabel")
-    fileLabel.Position = UDim2.new(0, 11, 0, 57)
-    fileLabel.Size = UDim2.new(1, -22, 0, 14)
+    fileLabel.Position = UDim2.new(0, 12, 0, 69)
+    fileLabel.Size = UDim2.new(1, -24, 0, 14)
     fileLabel.BackgroundTransparency = 1
     fileLabel.TextColor3 = COL_MUTED
     fileLabel.Font = Enum.Font.Gotham
@@ -785,52 +808,65 @@ local function showKeyTimer(remainingSeconds, fileSaved, expiresAtMs)
     fileLabel.TextTruncate = Enum.TextTruncate.AtEnd
     fileLabel.Parent = panel
 
-    expiryLabel.Text = type(expiresAtMs) == "number"
-        and ("Expires: " .. formatExpiryDate(expiresAtMs))
-        or "Expiry: Permanent"
-    fileLabel.Text = fileSaved
-        and ("Executor save file: " .. savedKeyPath)
-        or "Save file unavailable (executor has no writefile support)"
+    timerLabel.Text = fileSaved and "Saved on this device" or "Verified · device save unavailable"
+    expiryLabel.Text = type(expiresAtMs) == "number" and "Checking expiry..." or "Key is permanent"
+    fileLabel.Text = fileSaved and "Local copy ready" or "This executor cannot save a local copy"
 
     local closeButton = Instance.new("TextButton")
     closeButton.Position = UDim2.new(1, -27, 0, 5)
     closeButton.Size = UDim2.new(0, 22, 0, 22)
     closeButton.BackgroundTransparency = 1
     closeButton.Text = "×"
-    closeButton.TextColor3 = COL_MUTED
+    closeButton.TextColor3 = COL_TEXT
     closeButton.TextSize = 18
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = panel
-    closeButton.Activated:Connect(function()
+    local dismissing = false
+    local function dismissStatusNotice()
+        if dismissing or not panel.Parent then return end
+        dismissing = true
         TweenService:Create(panel, TweenInfo.new(0.18, EASE_OUT), {
             Position = UDim2.new(1, -14, 1, 16),
             BackgroundTransparency = 1
         }):Play()
         TweenService:Create(panelStroke, TweenInfo.new(0.16, EASE_OUT), { Transparency = 1 }):Play()
         TweenService:Create(panelScale, TweenInfo.new(0.18, EASE_OUT), { Scale = 0.94 }):Play()
-        task.wait(0.19)
-        if screenGui.Parent then screenGui:Destroy() end
-    end)
+        for _, textObject in ipairs({ nameLabel, timerLabel, expiryLabel, fileLabel, closeButton }) do
+            if textObject:IsA("TextLabel") or textObject:IsA("TextButton") then
+                TweenService:Create(textObject, TweenInfo.new(0.16, EASE_OUT), { TextTransparency = 1 }):Play()
+            end
+        end
+        task.delay(0.2, function()
+            if screenGui.Parent then screenGui:Destroy() end
+        end)
+    end
+    closeButton.Activated:Connect(dismissStatusNotice)
 
     if type(remainingSeconds) ~= "number" then
-        timerLabel.Text = "Key is permanent"
+        expiryLabel.Text = "Key is permanent"
+        task.delay(5, dismissStatusNotice)
         return
     end
 
     local secondsLeft = math.max(0, math.floor(remainingSeconds))
+    local lifetimeSeconds = secondsLeft
+    expiryLabel.Text = "Expires in " .. formatKeyTime(secondsLeft)
     task.spawn(function()
         while panel.Parent and secondsLeft > 0 do
-            timerLabel.Text = "Key expires in " .. formatKeyTime(secondsLeft)
+            expiryLabel.Text = "Expires in " .. formatKeyTime(secondsLeft)
             task.wait(1)
             secondsLeft -= 1
         end
+    end)
+    task.delay(lifetimeSeconds, function()
+        clearSavedKey()
         if panel.Parent then
-            clearSavedKey()
-            timerLabel.Text = "Key expired · get a new key to run again"
-            timerLabel.TextColor3 = COL_RED
-            if fileSaved then fileLabel.Text = "Executor save file cleared after expiry" end
+            expiryLabel.Text = "Key expired · get a new key to run again"
+            expiryLabel.TextColor3 = COL_RED
+            if fileSaved then fileLabel.Text = "Local copy cleared after expiry" end
         end
     end)
+    task.delay(5, dismissStatusNotice)
 end
 
 local function shakeCard()
@@ -994,13 +1030,34 @@ function sanitizeGuiAppearance(raw = {}) {
     const color = (value, fallback) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
         ? value
         : fallback;
+    const backgroundAnimation = ['none', 'aurora', 'orbit', 'waves', 'pulse', 'scanline', 'starlight', 'shimmer'].includes(raw.backgroundAnimation)
+        ? raw.backgroundAnimation
+        : 'aurora';
+    const backgroundColor = color(raw.backgroundColor, '#0b0d12');
+    const requestedTextColor = color(raw.textColor, '#f8fafc');
+    const linearChannel = channel => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = hex => {
+        const values = hex.slice(1).match(/.{2}/g).map(part => parseInt(part, 16));
+        return 0.2126 * linearChannel(values[0]) + 0.7152 * linearChannel(values[1]) + 0.0722 * linearChannel(values[2]);
+    };
+    const contrast = (first, second) => {
+        const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+        return (values[0] + 0.05) / (values[1] + 0.05);
+    };
+    const textColor = contrast(requestedTextColor, backgroundColor) >= 4.5
+        ? requestedTextColor
+        : (contrast('#f8fafc', backgroundColor) >= contrast('#111827', backgroundColor) ? '#f8fafc' : '#111827');
     return {
         title: text(raw.title, 'VoidedX Key System', 40),
         subtitle: text(raw.subtitle, 'Enter your key to continue', 64),
         buttonLabel: text(raw.buttonLabel, 'Submit', 20),
         accentColor: color(raw.accentColor, '#06b6d4'),
         secondaryColor: color(raw.secondaryColor, '#6366f1'),
-        backgroundColor: color(raw.backgroundColor, '#0b0d12'),
-        textColor: color(raw.textColor, '#f8fafc')
+        backgroundColor,
+        textColor,
+        backgroundAnimation
     };
 }

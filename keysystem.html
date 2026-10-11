@@ -49,7 +49,7 @@
                         <li><strong>Turn it on.</strong> Switch on <em>Enable Key System</em> to show the key settings.</li>
                         <li><strong>Choose who gets keys.</strong> Add a Private Key for people you choose, or enable Public Key so visitors can request one from your Get-Key page.</li>
                         <li><strong>Set the timer.</strong> Choose how long a key lasts and how many players may use it. Expired keys are rejected; the remaining time is shown in the in-game status badge.</li>
-                        <li><strong>Set up the in-game popup.</strong> Turn on <em>In-Game Key GUI</em> to ask players for a key in Roblox. Customize the title, colors, and button, then use the live-preview controls to replay the entrance, unlock, Get-Key, and close/open animations. After a key verifies, VoidedX saves it locally when the executor supports file saving, and checks it automatically next run.</li>
+                        <li><strong>Set up the in-game popup.</strong> Turn on <em>In-Game Key GUI</em> to ask players for a key in Roblox. Customize the title, colors, button, and background animation, then use the live-preview controls to replay the entrance, unlock, Get-Key, and close/open animations. After a key verifies, VoidedX saves it locally when the executor supports file saving, and checks it automatically next run.</li>
                         <li><strong>Optional custom link.</strong> Add your HTTPS unlock link below. Copy both links from the Get-Key Link tab: share the visitor link, then set the reward or return destination to the template that includes <code>{vx_ticket}</code>. Your link service must preserve that ticket and substitute it into the reward URL.</li>
                         <li><strong>Save your settings.</strong> Click <em>Apply Changes</em> after editing. Share the Get-Key URL with players who need a public key.</li>
                     </ol>
@@ -174,6 +174,19 @@
                                         <span>Text</span>
                                         <input type="color" id="gui-text-color" value="#f8fafc" aria-label="Popup text color">
                                     </label>
+                                    <label class="gui-setting">
+                                        <span>Background animation</span>
+                                        <select id="gui-background-animation" class="input-field" aria-label="In-game background animation">
+                                            <option value="none">Still</option>
+                                            <option value="aurora">Aurora drift</option>
+                                            <option value="orbit">Orbiting gradient</option>
+                                            <option value="waves">Soft waves</option>
+                                            <option value="pulse">Breathing glow</option>
+                                            <option value="scanline">Light sweep</option>
+                                            <option value="starlight">Starlight</option>
+                                            <option value="shimmer">Prism shimmer</option>
+                                        </select>
+                                    </label>
                                 </div>
                                 <div class="gui-preview-wrap">
                                     <div class="gui-preview-heading">
@@ -200,7 +213,7 @@
                                             <div class="gui-preview-status" id="gui-preview-status" aria-live="polite"></div>
                                             <small class="gui-preview-footer">KEY VERIFICATION · VOIDEDX</small>
                                         </div>
-                                        <div class="gui-preview-timer hidden" id="gui-preview-timer"><small>KEY UNLOCKED</small><strong>Saved on this device</strong><span>Expires in 23h 59m</span></div>
+                                        <div class="gui-preview-timer hidden" id="gui-preview-timer"><small>KEY UNLOCKED</small><strong>Saved on this device</strong><span>Expires in 1y 1d 23h 59m</span></div>
                                         <button type="button" class="gui-preview-closed hidden" id="gui-preview-closed"><i class="fa-solid fa-window-maximize"></i><strong>Popup closed</strong><span>Tap to open it again.</span></button>
                                     </div>
                                     <div class="gui-preview-controls" role="group" aria-label="Preview in-game GUI animations">
