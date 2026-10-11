@@ -286,6 +286,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const vaultListPanel = document.getElementById('vault-list-panel');
     const vaultListCount = document.getElementById('vault-list-count');
     const vaultSearch = document.getElementById('vault-search');
+    if (vaultSearch) {
+        // Clear stale browser-restored credentials and keep password managers
+        // away until the user deliberately focuses the search box.
+        vaultSearch.value = '';
+        vaultSearch.readOnly = true;
+    }
     const vaultSort = document.getElementById('vault-sort');
     const vaultFilter = document.getElementById('vault-filter');
     const vaultStatTotal = document.getElementById('vault-stat-total');
