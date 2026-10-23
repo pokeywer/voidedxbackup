@@ -10884,35 +10884,42 @@ local ok, outputOrError = xpcall(function()
 
   config.LuaVersion = ${d(e.luaVersion)}
   if config.LuaVersion == "LuaU" then
-    -- Keep Roblox API strings intact and omit transformations that corrupt or break Luau.
-    local incompatibleSteps = {
-      Vmify = true,
-      AntiTamper = true,
-      EncryptStrings = true,
-      ConstantArray = true,
-    }
-    local compatibleSteps = {}
-    for _, step in ipairs(config.Steps or {}) do
-      if not incompatibleSteps[step.Name] then
-        compatibleSteps[#compatibleSteps + 1] = step
+    if ${e.vmProtection === true ? `true` : `false`} then
+      -- Vmify replaces the whole AST, so keep it isolated from other passes.
+      -- The VM runs as the final transform and preserves global lookups through
+      -- the captured Luau environment instead of splitting Roblox API names.
+      config.Steps = { { Name = "Vmify", Settings = {} } }
+    else
+      -- Keep Roblox API strings intact and omit transformations that can corrupt or break Luau.
+      local incompatibleSteps = {
+        Vmify = true,
+        AntiTamper = true,
+        EncryptStrings = true,
+        ConstantArray = true,
+      }
+      local compatibleSteps = {}
+      for _, step in ipairs(config.Steps or {}) do
+        if not incompatibleSteps[step.Name] then
+          compatibleSteps[#compatibleSteps + 1] = step
+        end
       end
-    end
-    config.Steps = compatibleSteps
-    -- Split string literals using native concatenation so Luau needs no decoder helper.
-    table.insert(config.Steps, {
-      Name = "SplitStrings",
-      Settings = {
-        Threshold = 1,
-        MinLength = 2,
-        MaxLength = ${e.expandedTransforms === true ? `3` : `5`},
-        ConcatenationType = "strcat",
-      },
-    })
-    if ${e.tamperCheck === true ? `true` : `false`} then
+      config.Steps = compatibleSteps
+      -- Split string literals using native concatenation so Luau needs no decoder helper.
       table.insert(config.Steps, {
-        Name = "WatermarkCheck",
-        Settings = { Content = "VoidedX:" .. tostring(config.Seed) },
+        Name = "SplitStrings",
+        Settings = {
+          Threshold = 1,
+          MinLength = 2,
+          MaxLength = ${e.expandedTransforms === true ? `3` : `5`},
+          ConcatenationType = "strcat",
+        },
       })
+      if ${e.tamperCheck === true ? `true` : `false`} then
+        table.insert(config.Steps, {
+          Name = "WatermarkCheck",
+          Settings = { Content = "VoidedX:" .. tostring(config.Seed) },
+        })
+      end
     end
   end
   if config.LuaVersion == "LuaU" and ${e.preset === "Strong" ? `true` : `false`} then
