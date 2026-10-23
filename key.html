@@ -142,7 +142,9 @@
         function generateRandomKey() {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let out = 'VX-';
-            for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            for (const byte of bytes) out += chars[byte & 31];
             return out;
         }
 

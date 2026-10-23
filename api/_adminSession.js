@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const COOKIE_NAME = 'vx_admin_session';
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -29,7 +29,11 @@ function sign(payload) {
 }
 
 export function createAdminSession() {
-    const payload = Buffer.from(JSON.stringify({ role: 'admin', exp: Date.now() + SESSION_MS })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+        role: 'admin',
+        exp: Date.now() + SESSION_MS,
+        sid: randomBytes(18).toString('base64url')
+    })).toString('base64url');
     return `${payload}.${sign(payload)}`;
 }
 
@@ -47,7 +51,9 @@ export function hasAdminSession(req) {
     if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) return false;
     try {
         const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-        return session.role === 'admin' && Number(session.exp) > Date.now();
+        return session.role === 'admin'
+            && /^[A-Za-z0-9_-]{20,32}$/.test(session.sid || '')
+            && Number(session.exp) > Date.now();
     } catch {
         return false;
     }

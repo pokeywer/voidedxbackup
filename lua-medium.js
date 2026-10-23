@@ -38,10 +38,12 @@ export function obfuscateLua(source, level = 'medium', protection = {}) {
 
     const tamperCheck = protection.tamperCheck === true;
     const vmProtection = protection.vmProtection === true;
+    const expandedTransforms = protection.expandedTransforms === true;
     if (lastSuccessfulObfuscation?.source === source
         && lastSuccessfulObfuscation.level === level
         && lastSuccessfulObfuscation.tamperCheck === tamperCheck
-        && lastSuccessfulObfuscation.vmProtection === vmProtection) {
+        && lastSuccessfulObfuscation.vmProtection === vmProtection
+        && lastSuccessfulObfuscation.expandedTransforms === expandedTransforms) {
         return Promise.resolve(lastSuccessfulObfuscation.output);
     }
 
@@ -62,7 +64,7 @@ export function obfuscateLua(source, level = 'medium', protection = {}) {
                 reject(error);
                 return;
             }
-            lastSuccessfulObfuscation = { source, level, tamperCheck, vmProtection, output };
+            lastSuccessfulObfuscation = { source, level, tamperCheck, vmProtection, expandedTransforms, output };
             resolve(output);
         };
 
@@ -96,6 +98,7 @@ export function obfuscateLua(source, level = 'medium', protection = {}) {
                     luaVersion: 'LuaU',
                     tamperCheck,
                     vmProtection,
+                    expandedTransforms,
                     prettyPrint: false,
                     seed
                 }
@@ -123,9 +126,9 @@ export async function encodeVaultSource(source) {
     if (sourceBytes.byteLength > MAX_VAULT_SOURCE_BYTES) {
         throw new Error('This script is over the 2 MiB save limit. Reduce its size before saving.');
     }
-    // Keep the original readable in Firestore for owner review. Older gzip-base64
-    // vaults remain readable through decodeVaultSource and the API delivery helper.
-    return { encoding: 'identity', value: source };
+    // Compress source in Firestore so large scripts leave room for the generated
+    // execution copy. The editor transparently decodes both this and old records.
+    return encodeGzipBase64(source, sourceBytes);
 }
 
 export async function decodeVaultSource(value, encoding) {

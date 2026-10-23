@@ -10882,14 +10882,16 @@ local ok, outputOrError = xpcall(function()
 
   config.LuaVersion = ${d(e.luaVersion)}
   if config.LuaVersion == "LuaU" then
-    -- Keep Luau API strings intact and always omit Prometheus's debug-heavy AntiTamper.
-    -- The optional watermark check is fail-closed without hooks or infinite loops.
+    -- Keep Luau API strings intact and omit the unsupported VM and debug-heavy AntiTamper.
+    -- The larger string/constant transforms are opt-in because some Luau scripts cannot use them.
     local incompatibleSteps = {
       Vmify = true,
       AntiTamper = true,
-      EncryptStrings = true,
-      ConstantArray = true,
     }
+    if ${e.expandedTransforms === true ? `false` : `true`} then
+      incompatibleSteps.EncryptStrings = true
+      incompatibleSteps.ConstantArray = true
+    end
     local compatibleSteps = {}
     for _, step in ipairs(config.Steps or {}) do
       if not incompatibleSteps[step.Name] then

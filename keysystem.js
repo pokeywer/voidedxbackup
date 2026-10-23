@@ -75,7 +75,12 @@ function timeAgo(ts) {
 function generateRandomKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let out = 'VX-';
-    for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    if (!globalThis.crypto || typeof globalThis.crypto.getRandomValues !== 'function') {
+        throw new Error('Secure random key generation is unavailable in this browser.');
+    }
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    for (const byte of bytes) out += chars[byte & 31];
     return out;
 }
 

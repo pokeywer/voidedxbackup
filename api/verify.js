@@ -1,10 +1,25 @@
-import { db, FieldValue } from './_admin.js';
+import { createHash, randomBytes } from 'node:crypto';
+import { db } from './_admin.js';
 import { recordExecution } from './_executionStats.js';
-import { getCodeForExecution } from './_deliveryCode.js';
+
+const DELIVERY_SESSION_TTL_MS = 90 * 1000;
+const VERIFY_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const VERIFY_LIMIT_ATTEMPTS = 30;
+const VERIFY_LIMIT_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function cleanupExpiredSessions() {
+    const expired = await db.collection('sessions').where('expiresAt', '<=', Date.now()).limit(25).get();
+    await Promise.all(expired.docs.map(doc => doc.ref.delete()));
+}
+
+async function cleanupExpiredVerificationLimits() {
+    const expired = await db.collection('verificationLimits').where('expiresAt', '<=', Date.now()).limit(25).get();
+    await Promise.all(expired.docs.map(doc => doc.ref.delete()));
+}
 
 function json(res, status, body) {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.status(status).json(body);
 }
 
@@ -32,30 +47,88 @@ function keyExpiresAt(key) {
     return generatedAt + durationDays * 86400000;
 }
 
-function remainingKeySeconds(key) {
-    const expiresAt = keyExpiresAt(key);
-    if (expiresAt == null) return null;
-    return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+function getClientIp(req) {
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    return forwarded || (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
-function getClientIp(req) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) return forwarded.split(',')[0].trim();
-    return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : 'unknown';
+function keyDigest(key) {
+    return createHash('sha256').update(String(key)).digest('hex');
+}
+
+async function consumeVerificationAttempt(vaultId, req) {
+    const ip = getClientIp(req);
+    const refId = createHash('sha256').update(`${vaultId}\0${ip}`).digest('hex');
+    const ref = db.collection('verificationLimits').doc(refId);
+    return db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        const now = Date.now();
+        const state = snap.exists ? snap.data() : {};
+        const blockedUntil = Number(state.blockedUntil) || 0;
+        if (blockedUntil > now) {
+            return { allowed: false, retryAfter: Math.ceil((blockedUntil - now) / 1000) };
+        }
+
+        const previousStart = Number(state.windowStartedAt) || 0;
+        const sameWindow = previousStart > 0 && now - previousStart < VERIFY_LIMIT_WINDOW_MS;
+        const windowStartedAt = sameWindow ? previousStart : now;
+        const attempts = (sameWindow ? Number(state.attempts) || 0 : 0) + 1;
+        const nextBlockedUntil = attempts > VERIFY_LIMIT_ATTEMPTS ? now + VERIFY_LIMIT_WINDOW_MS : 0;
+        tx.set(ref, {
+            vaultId,
+            windowStartedAt,
+            attempts,
+            blockedUntil: nextBlockedUntil,
+            expiresAt: now + VERIFY_LIMIT_TTL_MS,
+            updatedAt: now
+        });
+        return nextBlockedUntil > now
+            ? { allowed: false, retryAfter: VERIFY_LIMIT_WINDOW_MS / 1000 }
+            : { allowed: true };
+    });
+}
+
+function isBanned(vault, userId) {
+    if (!userId) return false;
+    const ban = (Array.isArray(vault.bannedUsers) ? vault.bannedUsers : [])
+        .find(item => String(item.userId) === userId);
+    return !!ban && (ban.bannedUntil == null || Number(ban.bannedUntil) > Date.now());
+}
+
+function failure(status, message, code = null) {
+    return { ok: false, status, message, code };
 }
 
 export default async function handler(req, res) {
-    const { id, key, userId, username } = req.query;
-
-    if (!id || !key) {
-        return json(res, 400, { ok: false, message: 'Missing id or key.' });
+    if (req.method !== 'GET') {
+        res.setHeader('Allow', 'GET');
+        return json(res, 405, { ok: false, message: 'Method not allowed.' });
     }
 
-    try {
-        const vaultRef = db.collection('vaults').doc(id);
-        const vaultSnap = await vaultRef.get();
+    const id = String(req.query?.id || '');
+    const key = String(req.query?.key || '');
+    const rawUserId = req.query?.userId == null ? '' : String(req.query.userId);
+    if (!/^[A-Za-z0-9_-]{1,120}$/.test(id)) {
+        return json(res, 400, { ok: false, message: 'Missing or invalid vault ID.' });
+    }
+    if (key.length > 256) return json(res, 400, { ok: false, message: 'Invalid key.' });
+    if (rawUserId && !/^\d{1,20}$/.test(rawUserId)) {
+        return json(res, 400, { ok: false, message: 'Invalid player ID.' });
+    }
+    const userId = rawUserId || null;
+    const username = typeof req.query?.username === 'string'
+        ? req.query.username.replace(/[\r\n\t\x00-\x1f\x7f]/g, ' ').trim().slice(0, 32) || 'Unknown'
+        : 'Unknown';
+    const vaultRef = db.collection('vaults').doc(id);
+    const sessionToken = randomBytes(32).toString('hex');
+    const sessionRef = db.collection('sessions').doc(sessionToken);
+    const now = Date.now();
 
-        if (!vaultSnap.exists) {
+    try {
+        try { await cleanupExpiredSessions(); } catch {}
+        try { await cleanupExpiredVerificationLimits(); } catch {}
+        const initialSnap = await vaultRef.get();
+        if (!initialSnap.exists) {
             return json(res, 200, {
                 ok: false,
                 code: 'vault_removed',
@@ -63,144 +136,135 @@ export default async function handler(req, res) {
             });
         }
 
-        const vault = vaultSnap.data();
-
-        if (!vault.requireKey) {
-            return json(res, 200, { ok: true, code: getCodeForExecution(vault) });
-        }
-
-        const uidStr = userId ? String(userId) : null;
-
-        // Ban check — vault-wide, blocks a Roblox account from using ANY key here.
-        if (uidStr) {
-            const banned = (Array.isArray(vault.bannedUsers) ? vault.bannedUsers : [])
-                .find(b => String(b.userId) === uidStr);
-            if (banned && (banned.bannedUntil == null || banned.bannedUntil > Date.now())) {
-                const untilMsg = banned.bannedUntil
-                    ? `until ${new Date(banned.bannedUntil).toLocaleString()}`
-                    : 'permanently';
-                return json(res, 403, { ok: false, message: `You are banned from this vault ${untilMsg}.` });
+        const initiallyKeyed = !!initialSnap.data().requireKey;
+        if (initiallyKeyed) {
+            const rateLimit = await consumeVerificationAttempt(id, req);
+            if (!rateLimit.allowed) {
+                res.setHeader('Retry-After', String(rateLimit.retryAfter));
+                return json(res, 429, { ok: false, message: 'Too many key checks from this network. Wait a few minutes and try again.' });
             }
+            if (!userId) return json(res, 400, { ok: false, message: 'A player ID is required for key verification.' });
+            if (!key) return json(res, 400, { ok: false, message: 'Missing key.' });
         }
 
-        const keysList = getVaultKeys(vault);
-        let matched = keysList.find(k => k.key === key);
         let issuedKeyRef = null;
-
-        // Keys issued through one-time custom-link tickets live separately
-        // from the main vault document, so look them up when needed.
-        if (!matched) {
-            const issuedSnap = await vaultRef.collection('issuedKeys').where('key', '==', key).limit(1).get();
-            if (!issuedSnap.empty) {
-                issuedKeyRef = issuedSnap.docs[0].ref;
-                matched = issuedSnap.docs[0].data();
+        if (initiallyKeyed) {
+            const existingKey = getVaultKeys(initialSnap.data()).find(item => item.key === key);
+            if (!existingKey) {
+                const issuedSnap = await vaultRef.collection('issuedKeys').where('key', '==', key).limit(1).get();
+                if (!issuedSnap.empty) issuedKeyRef = issuedSnap.docs[0].ref;
             }
         }
 
-        if (!matched) {
-            return json(res, 403, { ok: false, message: 'Invalid key.' });
-        }
-        if (matched.terminated) {
-            return json(res, 403, { ok: false, message: 'This key has been terminated by the owner.' });
-        }
-        const matchedExpiresAt = keyExpiresAt(matched);
-        if (matchedExpiresAt != null && Date.now() >= matchedExpiresAt) {
-            return json(res, 403, { ok: false, message: 'This key has expired.' });
-        }
-        const initialRemainingSeconds = remainingKeySeconds(matched);
-        const initialExpiresAt = matchedExpiresAt;
+        const result = await db.runTransaction(async tx => {
+            const freshSnap = await tx.get(vaultRef);
+            if (!freshSnap.exists) {
+                return failure(200, 'This vault has been removed or deleted. Contact the owner for support.', 'vault_removed');
+            }
+            const vault = freshSnap.data();
+            if (!!vault.requireKey !== initiallyKeyed) {
+                return failure(403, 'The vault access settings changed. Run the current loader again.');
+            }
+            if (isBanned(vault, userId)) return failure(403, 'You are banned from this vault.');
 
-        // IP lock — vault-wide, atomic so two IPs can't both "win" the bind.
-        if (vault.ipLock) {
-            const clientIp = getClientIp(req);
-            try {
-                const ipResult = await db.runTransaction(async (tx) => {
-                    const freshSnap = await tx.get(vaultRef);
-                    if (!freshSnap.exists) return { ok: true };
-                    const freshData = freshSnap.data();
-                    if (!freshData.boundIp) {
-                        tx.update(vaultRef, { boundIp: clientIp });
-                        return { ok: true };
-                    }
-                    return { ok: freshData.boundIp === clientIp };
-                });
-                if (!ipResult.ok) {
-                    return json(res, 403, { ok: false, message: 'This key is locked to a different network/IP.' });
-                }
-            } catch (e) {}
-        }
+            const expiresAt = now + DELIVERY_SESSION_TTL_MS;
+            const sessionBase = {
+                vaultId: id,
+                createdAt: now,
+                expiresAt,
+                uses: 0,
+                maxUses: 1,
+                userId,
+                requireKey: initiallyKeyed
+            };
 
-        // Per-key player limit, atomic so two people can't both slip past a full cap.
-        if (uidStr) {
-            const result = await db.runTransaction(async (tx) => {
-                const freshSnap = await tx.get(vaultRef);
-                if (!freshSnap.exists) {
-                    return {
-                        ok: false,
-                        code: 'vault_removed',
-                        message: 'This vault has been removed or deleted. Contact the owner for support.'
-                    };
-                }
-                const freshData = freshSnap.data();
-                let freshKeys = null;
-                let idx = -1;
-                let fk;
-                let issuedSnap = null;
-                if (issuedKeyRef) {
-                    issuedSnap = await tx.get(issuedKeyRef);
-                    if (issuedSnap.exists && issuedSnap.data().key === key) fk = issuedSnap.data();
-                } else {
-                    freshKeys = getVaultKeys(freshData);
-                    idx = freshKeys.findIndex(k => k.key === key);
-                    if (idx !== -1) fk = freshKeys[idx];
-                }
-                if (!fk) return { ok: false, status: 403, message: 'Invalid key.' };
-                if (fk.terminated) return { ok: false, status: 403, message: 'This key has been terminated by the owner.' };
-                const freshExpiresAt = keyExpiresAt(fk);
-                if (freshExpiresAt != null && Date.now() >= freshExpiresAt) {
-                    return { ok: false, status: 403, message: 'This key has expired.' };
-                }
-                const remainingSeconds = remainingKeySeconds(fk);
-                const boundUsers = Array.isArray(fk.boundUsers) ? fk.boundUsers : [];
-                const existing = boundUsers.find(u => String(u.userId) === uidStr);
+            if (!initiallyKeyed) {
+                tx.create(sessionRef, sessionBase);
+                return { ok: true, token: sessionToken, ticketExpiresAt: expiresAt, expiresAt: null };
+            }
 
-                if (existing) {
-                    return { ok: true, code: getCodeForExecution(freshData), remainingSeconds, expiresAt: freshExpiresAt };
-                }
-                if (!fk.maxUsersUnlimited && boundUsers.length >= (fk.maxUsers || 1)) {
-                    return {
-                        ok: false, status: 403,
-                        message: `This key is already in use by the maximum number of players (${fk.maxUsers || 1}). Ask the vault owner to reset or raise the limit.`
-                    };
-                }
+            let matched = null;
+            let issuedSnap = null;
+            let keys = null;
+            let keyIndex = -1;
+            if (issuedKeyRef) {
+                issuedSnap = await tx.get(issuedKeyRef);
+                if (issuedSnap.exists && issuedSnap.data().key === key) matched = issuedSnap.data();
+            } else {
+                keys = getVaultKeys(vault);
+                keyIndex = keys.findIndex(item => item.key === key);
+                if (keyIndex >= 0) matched = keys[keyIndex];
+            }
 
-                const updatedUsers = [...boundUsers, { userId: uidStr, username: username || 'Unknown', boundAt: Date.now() }];
-                if (issuedKeyRef) {
-                    tx.update(issuedKeyRef, { boundUsers: updatedUsers });
-                } else {
-                    const updatedKeys = [...freshKeys];
-                    updatedKeys[idx] = { ...fk, boundUsers: updatedUsers };
+            if (!matched) return failure(403, 'Invalid key.');
+            if (matched.terminated) return failure(403, 'This key has been terminated by the owner.');
+            const keyExpiry = keyExpiresAt(matched);
+            if (keyExpiry != null && now >= keyExpiry) return failure(403, 'This key has expired.');
 
-                    // Only write back through the modern `keys` array shape.
-                    if (Array.isArray(freshData.keys) && freshData.keys.length > 0) {
-                        tx.update(vaultRef, { keys: updatedKeys });
-                    }
+            const clientAddress = getClientIp(req);
+            const vaultUpdates = {};
+            if (vault.ipLock) {
+                if (!vault.boundIp) vaultUpdates.boundIp = clientAddress;
+                else if (vault.boundIp !== clientAddress) return failure(403, 'This key is locked to a different network/IP.');
+            }
+
+            const boundUsers = Array.isArray(matched.boundUsers) ? matched.boundUsers : [];
+            const existingBinding = userId
+                ? boundUsers.find(item => String(item.userId) === userId)
+                : null;
+            const maxUsersUnlimited = matched.maxUsersUnlimited === true || matched.maxUsers === 'unlimited';
+            const maxUsers = Math.max(1, Number(matched.maxUsers) || 1);
+            if (userId && !existingBinding && !maxUsersUnlimited && boundUsers.length >= maxUsers) {
+                return failure(403, `This key is already in use by the maximum number of players (${maxUsers}). Ask the vault owner to reset or raise the limit.`);
+            }
+
+            if (userId && !existingBinding) {
+                const updatedUsers = [...boundUsers, { userId, username, boundAt: now }];
+                if (issuedKeyRef) tx.update(issuedKeyRef, { boundUsers: updatedUsers });
+                else if (Array.isArray(vault.keys) && vault.keys.length > 0) {
+                    const updatedKeys = [...keys];
+                    updatedKeys[keyIndex] = { ...matched, boundUsers: updatedUsers };
+                    vaultUpdates.keys = updatedKeys;
                 }
-                return { ok: true, code: getCodeForExecution(freshData), remainingSeconds, expiresAt: freshExpiresAt };
+            }
+
+            if (Object.keys(vaultUpdates).length) tx.update(vaultRef, vaultUpdates);
+            tx.create(sessionRef, {
+                ...sessionBase,
+                keyHash: keyDigest(key),
+                keyId: matched.id || 'k_legacy',
+                issuedKeyId: issuedKeyRef ? issuedKeyRef.id : null,
+                clientIp: vault.ipLock ? clientAddress : null
             });
+            return {
+                ok: true,
+                token: sessionToken,
+                ticketExpiresAt: expiresAt,
+                expiresAt: keyExpiry,
+                remainingSeconds: keyExpiry == null ? null : Math.max(0, Math.ceil((keyExpiry - now) / 1000)),
+                keyExpiresAt: keyExpiry
+            };
+        });
 
-            if (!result.ok) {
-                const status = result.code === 'vault_removed' ? 200 : (result.status || 403);
-                return json(res, status, { ok: false, code: result.code || null, message: result.message });
-            }
-            try { await recordExecution(vaultRef, id, vault.title, uidStr); } catch (e) {}
-            return json(res, 200, { ok: true, code: result.code, remainingSeconds: result.remainingSeconds, expiresAt: result.expiresAt });
+        if (!result.ok) {
+            return json(res, result.status || 403, {
+                ok: false,
+                code: result.code,
+                message: result.message
+            });
         }
 
-        try { await recordExecution(vaultRef, id, vault.title, uidStr); } catch (e) {}
-        return json(res, 200, { ok: true, code: getCodeForExecution(vault), remainingSeconds: initialRemainingSeconds, expiresAt: initialExpiresAt });
-    } catch (err) {
-        return json(res, 500, { ok: false, message: 'Server error: ' + err.message });
+        try { await recordExecution(vaultRef, id, initialSnap.data().title, userId); } catch {}
+        return json(res, 200, {
+            ok: true,
+            token: result.token,
+            ticketExpiresAt: result.ticketExpiresAt,
+            expiresAt: result.expiresAt,
+            remainingSeconds: result.remainingSeconds ?? null,
+            keyExpiresAt: result.keyExpiresAt ?? null
+        });
+    } catch (error) {
+        console.error('Vault verification failed:', error);
+        return json(res, 500, { ok: false, message: 'Could not verify access to this vault.' });
     }
 }
-

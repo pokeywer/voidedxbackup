@@ -17,7 +17,7 @@ function json(res, status, body) {
 function randomKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let out = 'VX-';
-    for (const byte of randomBytes(12)) out += chars[byte & 31];
+    for (const byte of randomBytes(16)) out += chars[byte & 31];
     return out;
 }
 

@@ -1,5 +1,5 @@
 import { db } from './_admin.js';
-import { recordExecution, recordActiveUser } from './_executionStats.js';
+import { recordActiveUser } from './_executionStats.js';
 import { buildRemovedVaultGui } from './_removedVaultGui.js';
 import { getCodeForExecution } from './_deliveryCode.js';
 
@@ -70,15 +70,10 @@ export default async function handler(req, res) {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
         if (!vaultData.requireKey) {
-            const directDelivery = !!userId || req.query.format === 'raw';
-            if (directDelivery && typeof executionCode === 'string' && executionCode.trim()) {
-                try { await recordExecution(db.collection('vaults').doc(String(id)), id, vaultData.title, userId); } catch (e) {}
-            }
             if (typeof executionCode !== 'string' || !executionCode.trim()) {
                 return res.status(200).send(executionCode);
             }
-            const deliveredCode = directDelivery ? executionCode : buildTrackedScript(id, getOrigin(req));
-            return res.status(200).send(deliveredCode);
+            return res.status(200).send(buildTrackedScript(id, getOrigin(req)));
         }
 
         // Key-in-URL mode: fast-fail on an obviously missing key, otherwise hand off
@@ -102,6 +97,7 @@ function buildKeyLoader(id, key, origin) {
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
+${buildPayloadRuntime(origin)}
 
 local ok, response = pcall(function()
     return game:HttpGet(
@@ -129,32 +125,68 @@ if not result.ok then
     return error("[VoidedX] " .. tostring(result.message or "Access denied."), 0)
 end
 
-loadstring(result.code)()
+return vxRunPayload(result.token, player and player.UserId or nil)
 `.trim();
 }
 
 function buildTrackedScript(id, origin) {
-    const deliveryUrl = `${origin}/api/raw?id=${encodeURIComponent(id)}&format=raw`;
+    const verifyUrl = `${origin}/api/verify?id=${encodeURIComponent(id)}`;
     return `
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
-local deliveryUrl = ${luaString(deliveryUrl)}
-if player then deliveryUrl = deliveryUrl .. "&userId=" .. tostring(player.UserId) end
+${buildPayloadRuntime(origin)}
+local verifyUrl = ${luaString(verifyUrl)}
+if player then verifyUrl = verifyUrl .. "&userId=" .. HttpService:UrlEncode(tostring(player.UserId)) end
 
-local requestOk, source = pcall(function()
-    return game:HttpGet(deliveryUrl)
+local requestOk, response = pcall(function()
+    return game:HttpGet(verifyUrl)
 end)
 if not requestOk then
-    error("[VoidedX] Could not download the script: " .. tostring(source), 0)
+    error("[VoidedX] Could not reach the loader server: " .. tostring(response), 0)
 end
-if type(source) ~= "string" then
-    error("[VoidedX] The server returned an invalid script.", 0)
+local decodeOk, result = pcall(function() return HttpService:JSONDecode(response) end)
+if not decodeOk or type(result) ~= "table" then
+    error("[VoidedX] Verification server returned a bad response.", 0)
 end
-local scriptChunk, compileError = loadstring(source)
-if not scriptChunk then
-    error("[VoidedX] " .. tostring(compileError), 0)
+if not result.ok then
+    if result.code == "vault_removed" then
+        ${buildRemovedVaultGui()}
+        return
+    end
+    error("[VoidedX] " .. tostring(result.message or "Could not load the script."), 0)
 end
-return scriptChunk()
+return vxRunPayload(result.token, player and player.UserId or nil)
+`.trim();
+}
+
+function buildPayloadRuntime(origin) {
+    const payloadBase = luaString(`${origin}/api/payload?session=`);
+    return `
+local function vxRunPayload(token, userId)
+    if type(token) ~= "string" or token == "" then
+        return error("[VoidedX] The server did not issue a delivery ticket.", 0)
+    end
+    local payloadUrl = ${payloadBase} .. HttpService:UrlEncode(token)
+    if userId ~= nil then payloadUrl = payloadUrl .. "&userId=" .. HttpService:UrlEncode(tostring(userId)) end
+
+    local requestOk, response = pcall(function() return game:HttpGet(payloadUrl) end)
+    if not requestOk then
+        return error("[VoidedX] Could not download the script: " .. tostring(response), 0)
+    end
+    local decodeOk, result = pcall(function() return HttpService:JSONDecode(response) end)
+    if not decodeOk or type(result) ~= "table" then
+        return error("[VoidedX] The payload server returned a bad response.", 0)
+    end
+    if not result.ok or type(result.code) ~= "string" then
+        return error("[VoidedX] " .. tostring(result.message or "The script could not be delivered."), 0)
+    end
+    local scriptChunk, compileError = loadstring(result.code)
+    if not scriptChunk then
+        return error("[VoidedX] " .. tostring(compileError), 0)
+    end
+    return scriptChunk()
+end
 `.trim();
 }
 
@@ -205,6 +237,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local savedKeyPath = ${luaString(savedKeyFile)}
+${buildPayloadRuntime(origin)}
 
 local function readSavedKey()
     if type(readfile) ~= "function" then return nil end
@@ -1279,7 +1312,7 @@ local function attemptVerify(fromSavedKey)
     card:Destroy()
     overlay:Destroy()
     showKeyTimer(result.remainingSeconds, fileSaved, result.expiresAt)
-    loadstring(result.code)()
+    vxRunPayload(result.token, player.UserId)
 end
 
 submitBtn.Activated:Connect(function()
