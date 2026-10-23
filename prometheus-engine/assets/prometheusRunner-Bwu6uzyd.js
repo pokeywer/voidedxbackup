@@ -8881,6 +8881,7 @@ function SplitStrings:apply(ast, pipeline)
 		-- Apply Only to String nodes
 		if(node.kind == Ast.AstKind.StringExpression) then
 			local str = node.value;
+			if string.len(str) <= 4096 then
 			local chunks = {};
 			local i = 1;
 
@@ -8922,6 +8923,7 @@ function SplitStrings:apply(ast, pipeline)
 				end
 			end
 
+			end
 			return node, true;
 		end
 	end, data)
@@ -10882,16 +10884,13 @@ local ok, outputOrError = xpcall(function()
 
   config.LuaVersion = ${d(e.luaVersion)}
   if config.LuaVersion == "LuaU" then
-    -- Keep Luau API strings intact and omit the unsupported VM and debug-heavy AntiTamper.
-    -- The larger string/constant transforms are opt-in because some Luau scripts cannot use them.
+    -- Keep Roblox API strings intact and omit transformations that corrupt or break Luau.
     local incompatibleSteps = {
       Vmify = true,
       AntiTamper = true,
+      EncryptStrings = true,
+      ConstantArray = true,
     }
-    if ${e.expandedTransforms === true ? `false` : `true`} then
-      incompatibleSteps.EncryptStrings = true
-      incompatibleSteps.ConstantArray = true
-    end
     local compatibleSteps = {}
     for _, step in ipairs(config.Steps or {}) do
       if not incompatibleSteps[step.Name] then
@@ -10905,7 +10904,7 @@ local ok, outputOrError = xpcall(function()
       Settings = {
         Threshold = 1,
         MinLength = 2,
-        MaxLength = 5,
+        MaxLength = ${e.expandedTransforms === true ? `3` : `5`},
         ConcatenationType = "strcat",
       },
     })
@@ -10914,10 +10913,6 @@ local ok, outputOrError = xpcall(function()
         Name = "WatermarkCheck",
         Settings = { Content = "VoidedX:" .. tostring(config.Seed) },
       })
-    end
-    if ${e.vmProtection === true ? `true` : `false`} then
-      -- Use a single VM pass at the end, only when explicitly enabled.
-      table.insert(config.Steps, { Name = "Vmify", Settings = {} })
     end
   end
   if config.LuaVersion == "LuaU" and ${e.preset === "Strong" ? `true` : `false`} then

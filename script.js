@@ -851,9 +851,12 @@ document.addEventListener('DOMContentLoaded', () => {
             obfuscationLevelSelect.value = ['auto', 'low', 'medium', 'high'].includes(data.obfuscationLevel) ? data.obfuscationLevel : 'auto';
         }
         if (chkTamperCheck) chkTamperCheck.checked = data.tamperCheckEnabled === true;
-        if (chkVmProtection) chkVmProtection.checked = data.vmProtectionEnabled === true;
+        if (chkVmProtection) chkVmProtection.checked = false;
         if (chkExpandedTransforms) chkExpandedTransforms.checked = data.expandedTransformsEnabled === true;
         setEditorDirty(false);
+        if (data.obfuscationEnabled === true && data.obfuscationProfileVersion !== 2) {
+            showToast('This vault has an older Luau obfuscation copy. Save it again to regenerate with the compatible profile.', 'warning', 10000);
+        }
         setProtectionKeyStatus(!!data.requireKey);
         updateLineNumbers();
         renderSyntaxHighlight();
@@ -1198,7 +1201,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chkObfuscation) chkObfuscation.addEventListener('change', () => setEditorDirty(true));
     if (obfuscationLevelSelect) obfuscationLevelSelect.addEventListener('change', () => setEditorDirty(true));
     if (chkTamperCheck) chkTamperCheck.addEventListener('change', () => setEditorDirty(true));
-    if (chkVmProtection) chkVmProtection.addEventListener('change', () => setEditorDirty(true));
     if (chkExpandedTransforms) chkExpandedTransforms.addEventListener('change', () => setEditorDirty(true));
 
     if (backupNowBtn) {
@@ -1288,7 +1290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const requestedObfuscationLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
         const effectiveObfuscationLevel = resolveObfuscationLevel(code, requestedObfuscationLevel);
         const tamperCheckEnabled = !!(chkTamperCheck && chkTamperCheck.checked);
-        const vmProtectionEnabled = !!(chkVmProtection && chkVmProtection.checked);
+        const vmProtectionEnabled = false;
         const expandedTransformsEnabled = !!(chkExpandedTransforms && chkExpandedTransforms.checked);
         if (obfuscationEnabled) {
             lockBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING ${effectiveObfuscationLevel.toUpperCase()}...`;
@@ -1345,6 +1347,7 @@ document.addEventListener('DOMContentLoaded', () => {
             code: encodedSourceCode.value,
             codeEncoding: encodedSourceCode.encoding,
             obfuscationEnabled,
+            obfuscationProfileVersion: 2,
             obfuscationLevel: requestedObfuscationLevel,
             tamperCheckEnabled,
             vmProtectionEnabled,

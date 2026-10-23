@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { db } from './_admin.js';
 import { recordActiveUser } from './_executionStats.js';
 import { buildRemovedVaultGui } from './_removedVaultGui.js';
@@ -93,7 +94,7 @@ error("[VoidedX] Invalid Key Provided!", 2)
 
 function buildKeyLoader(id, key, origin) {
     const verifyBase = `${origin}/api/verify`;
-    return `
+    return packGeneratedLoader(compactGeneratedLoader(`
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
@@ -126,12 +127,12 @@ if not result.ok then
 end
 
 return vxRunPayload(result.token, player and player.UserId or nil)
-`.trim();
+`));
 }
 
 function buildTrackedScript(id, origin) {
     const verifyUrl = `${origin}/api/verify?id=${encodeURIComponent(id)}`;
-    return `
+    return packGeneratedLoader(compactGeneratedLoader(`
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
@@ -157,7 +158,7 @@ if not result.ok then
     error("[VoidedX] " .. tostring(result.message or "Could not load the script."), 0)
 end
 return vxRunPayload(result.token, player and player.UserId or nil)
-`.trim();
+`));
 }
 
 function buildPayloadRuntime(origin) {
@@ -188,6 +189,83 @@ local function vxRunPayload(token, userId)
     return scriptChunk()
 end
 `.trim();
+}
+
+// Return a compact transport copy; this is cosmetic and does not replace the
+// server-side ticket and key checks that protect delivery.
+function compactGeneratedLoader(source) {
+    let output = '';
+    let index = 0;
+    let needsSpace = false;
+
+    const append = value => {
+        if (needsSpace && output && !output.endsWith(' ')) output += ' ';
+        output += value;
+        needsSpace = false;
+    };
+    const longBracket = start => {
+        if (source[start] !== '[') return null;
+        let cursor = start + 1;
+        while (source[cursor] === '=') cursor++;
+        if (source[cursor] !== '[') return null;
+        return { contentStart: cursor + 1, close: `]${'='.repeat(cursor - start - 1)}]` };
+    };
+
+    while (index < source.length) {
+        const char = source[index];
+        if (/\s/.test(char)) {
+            needsSpace = true;
+            index++;
+            continue;
+        }
+
+        if (char === '-' && source[index + 1] === '-') {
+            needsSpace = true;
+            const bracket = longBracket(index + 2);
+            if (bracket) {
+                const closeIndex = source.indexOf(bracket.close, bracket.contentStart);
+                index = closeIndex < 0 ? source.length : closeIndex + bracket.close.length;
+            } else {
+                while (index < source.length && source[index] !== '\n') index++;
+            }
+            continue;
+        }
+
+        if (char === '"' || char === "'") {
+            const quote = char;
+            let end = index + 1;
+            while (end < source.length) {
+                if (source[end] === '\\') { end += 2; continue; }
+                if (source[end++] === quote) break;
+            }
+            append(source.slice(index, end));
+            index = end;
+            continue;
+        }
+
+        const bracket = longBracket(index);
+        if (bracket) {
+            const closeIndex = source.indexOf(bracket.close, bracket.contentStart);
+            const end = closeIndex < 0 ? source.length : closeIndex + bracket.close.length;
+            append(source.slice(index, end));
+            index = end;
+            continue;
+        }
+
+        append(char);
+        index++;
+    }
+
+    return output.trim();
+}
+
+function packGeneratedLoader(source) {
+    const mask = randomBytes(1)[0] || 1;
+    const encoded = Array.from(Buffer.from(source, 'utf8'), byte => {
+        const maskedByte = (byte + mask) & 0xff;
+        return `\\${String(maskedByte).padStart(3, '0')}`;
+    }).join('');
+    return `local _bsdata0={1,${mask},"${encoded}"};local _bsdata1={};for _i0=1,#_bsdata0[3] do _bsdata1[_i0]=string.char((string.byte(_bsdata0[3],_i0)-_bsdata0[2])%256) end;return assert(loadstring(table.concat(_bsdata1)))()`;
 }
 
 function luaString(str) {
@@ -231,7 +309,7 @@ function buildGuiLoader(id, origin, rawAppearance = {}, rawVaultName = '') {
         ? [17, 24, 39]
         : [248, 250, 252];
     const backgroundAnimation = appearance.backgroundAnimation;
-    return `
+    return packGeneratedLoader(compactGeneratedLoader(`
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
@@ -1332,7 +1410,7 @@ if previouslySavedKey then
     setStatus("Checking the saved key...", COL_MUTED)
     task.defer(function() attemptVerify(true) end)
 end
-`.trim();
+`));
 }
 
 function sanitizeGuiAppearance(raw = {}) {
