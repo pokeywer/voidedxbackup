@@ -529,6 +529,8 @@ textarea { flex: 1; min-width: 0; min-height: 0; width: 100%; background: var(--
     .gui-customizer { padding: 10px; gap: 10px; }
     .gui-preview-screen { min-height: 230px; }
     .top-nav { flex-wrap: wrap; height: auto; min-height: 56px; padding: 8px 12px; gap: 8px; }
+    .top-nav .site-header-actions, .admin-topbar .site-header-actions { width: 100%; justify-content: flex-end; }
+    .admin-topbar { flex-wrap: wrap; }
     .brand-tag { display: none; }
     .nav-user { gap: 8px; }
     .user-badge { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
