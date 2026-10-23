@@ -7,20 +7,21 @@ function json(res, status, body) {
     return res.status(status).json(body);
 }
 
-function safeItem(doc) {
+function safeItem(doc, includeCode = true) {
     const data = doc.data();
-    return {
+    const item = {
         id: doc.id,
         title: String(data.title || '').slice(0, 80),
         description: String(data.description || '').slice(0, 400),
         game: String(data.game || '').slice(0, 80),
         category: String(data.category || 'Other').slice(0, 30),
         authorName: String(data.authorName || 'Community member').slice(0, 32),
-        code: String(data.code || '').slice(0, 40000),
-        status: String(data.status || 'pending'),
+        status: ['approved', 'rejected', 'hidden', 'pending'].includes(data.status) ? data.status : 'pending',
         reports: Math.max(0, Number(data.reports) || 0),
         createdAt: Number(data.createdAt) || 0
     };
+    if (includeCode) item.code = String(data.code || '').slice(0, 40000);
+    return item;
 }
 
 export default async function handler(req, res) {
@@ -47,13 +48,15 @@ export default async function handler(req, res) {
             return json(res, 200, { ok: true });
         }
 
-        const [pendingSnap, reportedSnap] = await Promise.all([
+        const [pendingSnap, reportedSnap, managedSnap] = await Promise.all([
             db.collection('communityScripts').where('status', '==', 'pending').limit(60).get(),
-            db.collection('communityScripts').where('reports', '>', 0).limit(40).get()
+            db.collection('communityScripts').where('reports', '>', 0).limit(40).get(),
+            db.collection('communityScripts').orderBy('createdAt', 'desc').limit(150).get()
         ]);
         const pending = pendingSnap.docs.map(safeItem).sort((a, b) => b.createdAt - a.createdAt);
         const reported = reportedSnap.docs.map(safeItem).filter(item => item.status === 'approved').sort((a, b) => b.reports - a.reports);
-        return json(res, 200, { ok: true, pending, reported });
+        const managed = managedSnap.docs.map(doc => safeItem(doc, false)).filter(item => item.status !== 'pending');
+        return json(res, 200, { ok: true, pending, reported, managed });
     } catch (error) {
         console.error('Admin script review failed:', error);
         return json(res, 500, { ok: false, message: 'Could not load script reviews.' });

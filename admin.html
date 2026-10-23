@@ -63,11 +63,13 @@
                         <div><p class="admin-eyebrow">SITE MESSAGE</p><h2><i class="fa-solid fa-bullhorn"></i> Announcement</h2></div>
                         <span id="announcement-state" class="admin-state-pill">No active message</span>
                     </div>
-                    <p class="admin-help">Publish one message banner at the top of the main page. Keep it short and useful.</p>
+                    <p class="admin-help">Publish a site-wide banner. It stays visible until you remove it, unless you enable visitor dismissal or set an expiry.</p>
                     <label class="panel-label" for="announcement-title">TITLE</label>
                     <input id="announcement-title" class="input-field" maxlength="80" placeholder="Example: Maintenance tonight">
+                    <span class="admin-field-count" id="announcement-title-count">0 / 80</span>
                     <label class="panel-label" for="announcement-message">MESSAGE</label>
                     <textarea id="announcement-message" class="input-field admin-textarea" rows="4" maxlength="500" placeholder="Write an update for VoidedX visitors"></textarea>
+                    <span class="admin-field-count" id="announcement-message-count">0 / 500</span>
                     <div class="admin-form-row">
                         <div class="admin-form-field">
                             <label class="panel-label" for="announcement-kind">STYLE</label>
@@ -80,6 +82,26 @@
                     </div>
                     <label class="panel-label" for="announcement-link">OPTIONAL LINK</label>
                     <input id="announcement-link" class="input-field" type="url" maxlength="500" placeholder="https://example.com">
+                    <div class="admin-form-row admin-announcement-options">
+                        <div class="admin-form-field">
+                            <label class="panel-label" for="announcement-expires">AUTO-EXPIRE (OPTIONAL)</label>
+                            <input id="announcement-expires" class="input-field" type="datetime-local">
+                            <small class="admin-help">Leave blank to keep it live until you remove it.</small>
+                        </div>
+                        <label class="admin-check-row" for="announcement-dismissible">
+                            <input id="announcement-dismissible" type="checkbox">
+                            <span><strong>Let visitors dismiss this banner</strong><small>Off by default. If enabled, the close button appears and stays dismissed on that device.</small></span>
+                        </label>
+                    </div>
+                    <div class="admin-preview-wrap">
+                        <div class="admin-preview-heading"><strong>LIVE PREVIEW</strong><span>Updates as you type</span></div>
+                        <div id="announcement-preview" class="site-announcement info admin-announcement-preview">
+                            <i id="announcement-preview-icon" class="fa-solid fa-circle-info promo-icon" aria-hidden="true"></i>
+                            <div class="site-announcement-copy"><strong id="announcement-preview-title">Your announcement title</strong><span id="announcement-preview-message">Your message will appear here.</span></div>
+                            <a id="announcement-preview-link" class="site-announcement-link hidden" href="#">Learn more</a>
+                            <button id="announcement-preview-dismiss" class="site-announcement-dismiss hidden" type="button" aria-label="Dismiss preview"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
                     <div class="admin-form-actions">
                         <button id="announcement-publish-btn" class="btn-primary" type="button"><i class="fa-solid fa-paper-plane"></i> Publish announcement</button>
                         <button id="announcement-clear-btn" class="btn-danger" type="button"><i class="fa-solid fa-trash"></i> Remove</button>
@@ -106,6 +128,16 @@
                     <section><div class="admin-script-list-heading"><h3>Waiting for review</h3><span id="admin-script-pending-count" class="admin-state-pill">0</span></div><div id="admin-script-pending-list" class="admin-script-list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading submissions…</p></div></div></section>
                     <section><div class="admin-script-list-heading"><h3>Reported by users</h3><span id="admin-script-reported-count" class="admin-state-pill">0</span></div><div id="admin-script-reported-list" class="admin-script-list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading reports…</p></div></div></section>
                 </div>
+                <section class="admin-managed-scripts">
+                    <div class="admin-script-list-heading"><div><h3>Manage existing scripts</h3><p class="admin-help">Search the latest community uploads, change their visibility, or restore hidden scripts.</p></div><span id="admin-managed-script-count" class="admin-state-pill">Loading…</span></div>
+                    <div class="admin-script-manager-toolbar">
+                        <input id="admin-script-search" class="input-field" type="search" placeholder="Search by title, creator, game, or description" aria-label="Search scripts">
+                        <select id="admin-script-status-filter" class="input-field" aria-label="Filter scripts by status">
+                            <option value="all">All statuses</option><option value="approved">Published</option><option value="hidden">Hidden</option><option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div id="admin-managed-script-list" class="admin-script-list admin-managed-script-list"><div class="info-box"><p>Loading scripts…</p></div></div>
+                </section>
             </section>
         </section>
     </main>

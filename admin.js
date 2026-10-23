@@ -8,6 +8,8 @@ const statusBox = document.getElementById('admin-status');
 const ideasList = document.getElementById('admin-ideas-list');
 const pendingScriptsList = document.getElementById('admin-script-pending-list');
 const reportedScriptsList = document.getElementById('admin-script-reported-list');
+const managedScriptsList = document.getElementById('admin-managed-script-list');
+let managedScripts = [];
 
 async function requestJson(path, options = {}) {
     const response = await fetch(path, {
@@ -101,6 +103,37 @@ function formatDate(value) {
     }
 }
 
+function datetimeLocalValue(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (!Number.isFinite(date.getTime())) return '';
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function updateAnnouncementPreview() {
+    const title = document.getElementById('announcement-title').value.trim();
+    const message = document.getElementById('announcement-message').value.trim();
+    const kind = document.getElementById('announcement-kind').value;
+    const link = document.getElementById('announcement-link').value.trim();
+    const label = document.getElementById('announcement-link-label').value.trim() || 'Learn more';
+    const dismissible = document.getElementById('announcement-dismissible').checked;
+    const preview = document.getElementById('announcement-preview');
+    preview.classList.remove('info', 'success', 'warning');
+    preview.classList.add(['info', 'success', 'warning'].includes(kind) ? kind : 'info');
+    document.getElementById('announcement-preview-icon').className = kind === 'success'
+        ? 'fa-solid fa-circle-check promo-icon'
+        : kind === 'warning' ? 'fa-solid fa-triangle-exclamation promo-icon' : 'fa-solid fa-circle-info promo-icon';
+    document.getElementById('announcement-preview-title').textContent = title || 'Your announcement title';
+    document.getElementById('announcement-preview-message').textContent = message || 'Your message will appear here.';
+    const previewLink = document.getElementById('announcement-preview-link');
+    previewLink.textContent = label;
+    previewLink.classList.toggle('hidden', !link);
+    previewLink.href = link || '#';
+    document.getElementById('announcement-preview-dismiss').classList.toggle('hidden', !dismissible);
+    document.getElementById('announcement-title-count').textContent = `${title.length} / 80`;
+    document.getElementById('announcement-message-count').textContent = `${message.length} / 500`;
+}
+
 function renderIdeas(ideas) {
     ideasList.innerHTML = '';
     if (!ideas.length) {
@@ -177,15 +210,70 @@ function renderScriptReviews(items, container, reported = false) {
     });
 }
 
+function renderManagedScripts() {
+    const query = document.getElementById('admin-script-search').value.trim().toLocaleLowerCase();
+    const status = document.getElementById('admin-script-status-filter').value;
+    const visible = managedScripts.filter(script => {
+        if (status !== 'all' && script.status !== status) return false;
+        const searchable = [script.title, script.description, script.game, script.category, script.authorName].join(' ').toLocaleLowerCase();
+        return !query || searchable.includes(query);
+    });
+    document.getElementById('admin-managed-script-count').textContent = `${visible.length} shown · ${managedScripts.length} loaded`;
+    managedScriptsList.replaceChildren();
+    if (!visible.length) {
+        const empty = document.createElement('div');
+        empty.className = 'info-box';
+        const text = document.createElement('p');
+        text.textContent = managedScripts.length ? 'No scripts match these filters.' : 'No published or hidden scripts found.';
+        empty.appendChild(text);
+        managedScriptsList.appendChild(empty);
+        return;
+    }
+
+    visible.forEach(script => {
+        const card = document.createElement('article');
+        card.className = 'admin-script-review-item admin-managed-script-item';
+        const heading = document.createElement('div');
+        heading.className = 'admin-script-review-heading';
+        const title = document.createElement('strong');
+        title.textContent = script.title;
+        const meta = document.createElement('span');
+        meta.textContent = `${script.category} · ${script.game} · by ${script.authorName}`;
+        heading.append(title, meta);
+        const description = document.createElement('p');
+        description.textContent = script.description || '(No description)';
+        const actions = document.createElement('div');
+        actions.className = 'admin-managed-script-actions';
+        const state = document.createElement('span');
+        state.className = `admin-state-pill status-pill-${script.status}`;
+        state.textContent = script.status === 'approved' ? 'Published' : script.status === 'hidden' ? 'Hidden' : 'Rejected';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = script.status === 'approved' ? 'btn-danger admin-script-review-button' : 'btn-primary admin-script-review-button';
+        button.dataset.scriptId = script.id;
+        button.dataset.nextStatus = script.status === 'approved' ? 'hidden' : 'approved';
+        button.innerHTML = script.status === 'approved'
+            ? '<i class="fa-solid fa-eye-slash"></i> Hide from library'
+            : '<i class="fa-solid fa-arrow-up"></i> Publish';
+        actions.append(state, button);
+        card.append(heading, description, actions);
+        managedScriptsList.appendChild(card);
+    });
+}
+
 async function loadAnnouncement() {
     const data = await requestJson('/api/announcements');
     const announcement = data.announcement;
-    document.getElementById('announcement-state').textContent = announcement ? 'Published' : 'No active message';
+    const expired = announcement?.expiresAt && Number(announcement.expiresAt) <= Date.now();
+    document.getElementById('announcement-state').textContent = expired ? 'Expired' : announcement ? (announcement.dismissible ? 'Published · dismissible' : 'Published · persistent') : 'No active message';
     document.getElementById('announcement-title').value = announcement?.title || '';
     document.getElementById('announcement-message').value = announcement?.message || '';
     document.getElementById('announcement-kind').value = announcement?.kind || 'info';
     document.getElementById('announcement-link').value = announcement?.link || '';
     document.getElementById('announcement-link-label').value = announcement?.linkLabel || '';
+    document.getElementById('announcement-dismissible').checked = announcement?.dismissible === true;
+    document.getElementById('announcement-expires').value = expired ? '' : datetimeLocalValue(Number(announcement?.expiresAt) || 0);
+    updateAnnouncementPreview();
 }
 
 async function refreshDashboard() {
@@ -193,8 +281,7 @@ async function refreshDashboard() {
     try {
         const [dashboard, scriptReviews] = await Promise.all([
             requestJson('/api/admin-dashboard'),
-            requestJson('/api/admin-scripts'),
-            loadAnnouncement()
+            requestJson('/api/admin-scripts')
         ]);
         document.getElementById('admin-stat-vaults').textContent = Number(dashboard.stats.vaults || 0).toLocaleString();
         document.getElementById('admin-stat-executions').textContent = Number(dashboard.stats.executions || 0).toLocaleString();
@@ -203,10 +290,17 @@ async function refreshDashboard() {
         renderIdeas(dashboard.ideas || []);
         renderScriptReviews(scriptReviews.pending || [], pendingScriptsList);
         renderScriptReviews(scriptReviews.reported || [], reportedScriptsList, true);
+        managedScripts = Array.isArray(scriptReviews.managed) ? scriptReviews.managed : [];
+        renderManagedScripts();
         document.getElementById('admin-script-pending-count').textContent = String((scriptReviews.pending || []).length);
         document.getElementById('admin-script-reported-count').textContent = String((scriptReviews.reported || []).length);
         document.getElementById('admin-script-review-count').textContent = `${(scriptReviews.pending || []).length} pending · ${(scriptReviews.reported || []).length} reported`;
-        statusBox.classList.add('hidden');
+        try {
+            await loadAnnouncement();
+            statusBox.classList.add('hidden');
+        } catch (error) {
+            setStatus(`Dashboard loaded, but the announcement could not be loaded: ${error.message}`, 'error');
+        }
     } catch (error) {
         setStatus(error.message, 'error');
         if (/session expired/i.test(error.message)) setLoggedIn(false);
@@ -230,17 +324,27 @@ document.getElementById('admin-logout-btn').addEventListener('click', async () =
 
 document.getElementById('announcement-publish-btn').addEventListener('click', async event => {
     const button = event.currentTarget;
+    const expiresValue = document.getElementById('announcement-expires').value;
+    const expiresAt = expiresValue ? new Date(expiresValue).getTime() : 0;
+    if (expiresAt && (!Number.isFinite(expiresAt) || expiresAt <= Date.now())) {
+        setStatus('Choose a future expiration time, or clear the expiry field.', 'error');
+        return;
+    }
     const payload = {
         title: document.getElementById('announcement-title').value.trim(),
         message: document.getElementById('announcement-message').value.trim(),
         kind: document.getElementById('announcement-kind').value,
         link: document.getElementById('announcement-link').value.trim(),
-        linkLabel: document.getElementById('announcement-link-label').value.trim() || 'Learn more'
+        linkLabel: document.getElementById('announcement-link-label').value.trim() || 'Learn more',
+        dismissible: document.getElementById('announcement-dismissible').checked,
+        expiresAt
     };
     setLoading(button, true, 'PUBLISHING…');
     try {
         await requestJson('/api/announcements', { method: 'POST', body: JSON.stringify(payload) });
-        setStatus('Announcement published. It will appear at the top of the main site.', 'success');
+        setStatus(payload.dismissible
+            ? 'Announcement published. Visitors can dismiss it on their device.'
+            : 'Announcement published. It stays visible until it expires or you remove it.', 'success');
         await loadAnnouncement();
     } catch (error) {
         setStatus(error.message, 'error');
@@ -285,7 +389,7 @@ document.querySelector('.admin-script-review-card').addEventListener('click', as
     const button = event.target.closest('button[data-script-id]');
     if (!button) return;
     const status = button.dataset.nextStatus;
-    const actionLabel = status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : 'hide';
+    const actionLabel = status === 'approved' ? 'publish' : status === 'rejected' ? 'reject' : 'hide';
     if (!window.confirm(`Are you sure you want to ${actionLabel} “${button.closest('.admin-script-review-item').querySelector('strong').textContent}”?`)) return;
     setLoading(button, true, 'SAVING…');
     try {
@@ -297,3 +401,12 @@ document.querySelector('.admin-script-review-card').addEventListener('click', as
 });
 
 checkSession();
+
+['announcement-title', 'announcement-message', 'announcement-kind', 'announcement-link-label', 'announcement-link', 'announcement-dismissible'].forEach(id => {
+    const element = document.getElementById(id);
+    element.addEventListener('input', updateAnnouncementPreview);
+    element.addEventListener('change', updateAnnouncementPreview);
+});
+document.getElementById('announcement-preview-link').addEventListener('click', event => event.preventDefault());
+document.getElementById('admin-script-search').addEventListener('input', renderManagedScripts);
+document.getElementById('admin-script-status-filter').addEventListener('change', renderManagedScripts);

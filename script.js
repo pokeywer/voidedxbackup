@@ -135,14 +135,20 @@ async function loadSiteAnnouncement() {
         const data = await response.json();
         const announcement = data && data.announcement;
         if (!announcement || !announcement.message) return;
+        const expiresAt = Number(announcement.expiresAt) || 0;
+        if (expiresAt && expiresAt <= Date.now()) return;
 
         const dismissalKey = `voidedx-announcement-dismissed-${announcement.updatedAt || announcement.message}`;
-        try { if (localStorage.getItem(dismissalKey) === '1') return; } catch {}
+        const dismissible = announcement.dismissible === true;
+        if (dismissible) {
+            try { if (localStorage.getItem(dismissalKey) === '1') return; } catch {}
+        }
 
         const title = document.getElementById('site-announcement-title');
         const message = document.getElementById('site-announcement-message');
         const link = document.getElementById('site-announcement-link');
         const dismiss = document.getElementById('site-announcement-dismiss');
+        dismiss.classList.toggle('hidden', !dismissible);
         title.textContent = announcement.title || 'VoidedX update';
         message.textContent = announcement.message;
 
@@ -162,10 +168,10 @@ async function loadSiteAnnouncement() {
                 link.classList.remove('hidden');
             }
         }
-        dismiss.onclick = () => {
+        dismiss.onclick = dismissible ? () => {
             banner.classList.add('hidden');
             try { localStorage.setItem(dismissalKey, '1'); } catch {}
-        };
+        } : null;
         banner.classList.remove('hidden');
     } catch {
         // Public pages remain usable if announcements are temporarily unavailable.

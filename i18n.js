@@ -15,16 +15,29 @@
         'Refresh': 'Atualizar', 'Sign out': 'Sair', 'Total vaults': 'Cofres no total',
         'Tracked executions': 'Execuções registradas', 'Ideas submitted': 'Ideias enviadas',
         'SITE MESSAGE': 'AVISO DO SITE', 'Announcement': 'Aviso', 'No active message': 'Nenhum aviso ativo',
+        'Publish a site-wide banner. It stays visible until you remove it, unless you enable visitor dismissal or set an expiry.': 'Publique um aviso para todo o site. Ele permanece visível até você removê-lo, a menos que permita que visitantes o fechem ou defina uma expiração.',
         'Publish one message banner at the top of the main page. Keep it short and useful.': 'Publique um aviso no topo da página principal. Seja breve e objetivo.',
         'TITLE': 'TÍTULO', 'Example: Maintenance tonight': 'Exemplo: manutenção hoje à noite',
         'MESSAGE': 'MENSAGEM', 'Write an update for VoidedX visitors': 'Escreva um aviso para quem visita o VoidedX',
         'STYLE': 'ESTILO', 'Information': 'Informação', 'Success': 'Sucesso', 'Warning': 'Atenção',
         'BUTTON LABEL': 'TEXTO DO BOTÃO', 'Learn more': 'Saiba mais', 'OPTIONAL LINK': 'LINK OPCIONAL',
-        'Publish announcement': 'Publicar aviso', 'Remove': 'Remover', 'COMMUNITY': 'COMUNIDADE',
+        'Publish announcement': 'Publicar aviso', 'Publish': 'Publicar', 'Hide from library': 'Ocultar da biblioteca',
+        'Remove': 'Remover', 'COMMUNITY': 'COMUNIDADE',
+        'AUTO-EXPIRE (OPTIONAL)': 'EXPIRAÇÃO AUTOMÁTICA (OPCIONAL)', 'Leave blank to keep it live until you remove it.': 'Deixe em branco para mantê-lo ativo até removê-lo.',
+        'Let visitors dismiss this banner': 'Permitir que visitantes fechem este aviso',
+        'Off by default. If enabled, the close button appears and stays dismissed on that device.': 'Desativado por padrão. Se ativado, o botão de fechar aparece e o aviso fica fechado naquele dispositivo.',
+        'LIVE PREVIEW': 'PRÉVIA AO VIVO', 'Updates as you type': 'Atualiza enquanto você digita',
+        'Your announcement title': 'Título do seu aviso', 'Your message will appear here.': 'Sua mensagem aparecerá aqui.',
+        'Published · dismissible': 'Publicado · pode ser fechado', 'Published · persistent': 'Publicado · permanece visível', 'Expired': 'Expirado',
         'Feature ideas': 'Ideias de recursos', 'Loading…': 'Carregando…',
         'Review suggestions sent through the Share Your Ideas form.': 'Revise sugestões enviadas pelo formulário Compartilhe suas ideias.',
         'Loading ideas…': 'Carregando ideias…', 'SCRIPT LIBRARY': 'BIBLIOTECA DE SCRIPTS',
-        'Community script review': 'Revisão de scripts da comunidade',
+        'Community script review': 'Revisão de scripts da comunidade', 'Manage existing scripts': 'Gerenciar scripts existentes',
+        'Search the latest community uploads, change their visibility, or restore hidden scripts.': 'Pesquise os envios recentes da comunidade, altere a visibilidade ou restaure scripts ocultos.',
+        'Search by title, creator, game, or description': 'Pesquisar por título, criador, jogo ou descrição',
+        'Filter scripts by status': 'Filtrar scripts por status', 'All statuses': 'Todos os status', 'Published': 'Publicado', 'Hidden': 'Oculto', 'Rejected': 'Rejeitado',
+        'Loading scripts…': 'Carregando scripts…', 'No scripts match these filters.': 'Nenhum script corresponde a estes filtros.',
+        'No published or hidden scripts found.': 'Nenhum script publicado ou oculto foi encontrado.',
         'Read the description and source before approving. Approved scripts appear in the public library. Reported scripts can be hidden from visitors.': 'Leia a descrição e o código antes de aprovar. Os scripts aprovados aparecem na biblioteca pública. Scripts denunciados podem ser ocultados dos visitantes.',
         'Waiting for review': 'Aguardando revisão', 'Loading submissions…': 'Carregando envios…',
         'Reported by users': 'Denunciados por usuários', 'Loading reports…': 'Carregando denúncias…',
@@ -319,7 +332,7 @@
     const originalAttrs = new WeakMap();
     const lastAttrs = new WeakMap();
     const ignoredTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'PRE', 'CODE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION', 'SVG', 'CANVAS']);
-    const ignoredContentSelector = '#site-announcement-title, #site-announcement-message, .vault-item-title, .script-card h3, .script-card-description, .script-card-game, .script-card-author, .script-author-copy, #detail-title, #detail-description, #detail-author, #detail-game, #ks-vault-title, #gui-preview-vault-name, #keyprompt-title strong, #getkey-title span, #secured-title strong:first-child, .admin-idea-header, .admin-idea-card > p, .admin-script-review-heading, .admin-script-review-item > p, .manage-user-name, .manage-user-meta';
+    const ignoredContentSelector = '#site-announcement-title, #site-announcement-message, #announcement-preview-title, #announcement-preview-message, .vault-item-title, .script-card h3, .script-card-description, .script-card-game, .script-card-author, .script-author-copy, #detail-title, #detail-description, #detail-author, #detail-game, #ks-vault-title, #gui-preview-vault-name, #keyprompt-title strong, #getkey-title span, #secured-title strong:first-child, .admin-idea-header, .admin-idea-card > p, .admin-script-review-heading, .admin-script-review-item > p, .manage-user-name, .manage-user-meta';
 
     function normalize(value) { return String(value).replace(/\s+/g, ' ').trim(); }
     function translated(value) {
