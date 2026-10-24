@@ -6,6 +6,9 @@ export const AUTO_HIGH_BYTE_THRESHOLD = 10_000;
 export const AUTO_LOW_BYTE_THRESHOLD = AUTO_HIGH_BYTE_THRESHOLD;
 export const AUTO_LOW_CHAR_THRESHOLD = AUTO_HIGH_BYTE_THRESHOLD;
 export const MAX_VAULT_SOURCE_BYTES = 2 * 1024 * 1024;
+// Keep ordinary scripts directly readable in Firestore for owner audits.
+// Larger sources stay compressed so the source + execution copy can fit in a document.
+export const MAX_READABLE_VAULT_SOURCE_BYTES = 128 * 1024;
 export const MAX_OBFUSCATION_SOURCE_BYTES = MAX_VAULT_SOURCE_BYTES;
 export const MAX_OBFUSCATED_OUTPUT_BYTES = 8 * 1024 * 1024;
 
@@ -125,6 +128,9 @@ export async function encodeVaultSource(source) {
     const sourceBytes = new TextEncoder().encode(source);
     if (sourceBytes.byteLength > MAX_VAULT_SOURCE_BYTES) {
         throw new Error('This script is over the 2 MiB save limit. Reduce its size before saving.');
+    }
+    if (sourceBytes.byteLength <= MAX_READABLE_VAULT_SOURCE_BYTES) {
+        return { encoding: 'identity', value: source };
     }
     // Compress source in Firestore so large scripts leave room for the generated
     // execution copy. The editor transparently decodes both this and old records.

@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
 import {
-    getFirestore, doc, getDoc, updateDoc
+    getFirestore, doc, getDoc, updateDoc, increment
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 import {
     getAuth, onAuthStateChanged, signInAnonymously
@@ -158,6 +158,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const guiPreviewClosed = document.getElementById('gui-preview-closed');
     const guiPreviewToggle = document.getElementById('gui-preview-toggle');
     const chkIpLock = document.getElementById('chk-ip-lock');
+    const chkVaultPaused = document.getElementById('chk-vault-paused');
+    const vaultPauseStatus = document.getElementById('vault-pause-status');
+    const revokeLoaderLinksBtn = document.getElementById('revoke-loader-links-btn');
+    const verifyAttemptLimit = document.getElementById('verify-attempt-limit');
+    const deliveryTicketLifetime = document.getElementById('delivery-ticket-lifetime');
     const ipLockStatus = document.getElementById('ip-lock-status');
     const ipLockStatusText = document.getElementById('ip-lock-status-text');
     const resetIpBtn = document.getElementById('reset-ip-btn');
@@ -188,6 +193,40 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             document.querySelector(`.ks-tab-panel[data-panel="${tab.dataset.tab}"]`).classList.remove('hidden');
         });
+    });
+
+    chkVaultPaused.addEventListener('change', async () => {
+        const nextValue = chkVaultPaused.checked;
+        chkVaultPaused.disabled = true;
+        try {
+            await updateDoc(doc(db, 'vaults', vaultId), { launchPaused: nextValue });
+            vaultPauseStatus.classList.toggle('hidden', !nextValue);
+            showToast(nextValue ? 'Vault paused. New launches are blocked.' : 'Vault resumed.', 'success');
+        } catch (err) {
+            chkVaultPaused.checked = !nextValue;
+            showToast('Could not update vault pause: ' + err.message, 'error', 6000);
+        } finally {
+            chkVaultPaused.disabled = false;
+        }
+    });
+
+    revokeLoaderLinksBtn.addEventListener('click', async () => {
+        const confirmed = await customConfirm({
+            title: 'Revoke every current loader link?',
+            message: 'All copied loader tokens for this vault stop working immediately. Players can get a fresh loader from the website. Scripts already running will continue.',
+            confirmLabel: 'Revoke links'
+        });
+        if (!confirmed) return;
+
+        revokeLoaderLinksBtn.disabled = true;
+        try {
+            await updateDoc(doc(db, 'vaults', vaultId), { loaderVersion: increment(1) });
+            showToast('Current loader links revoked. Copy a fresh loader from the website.', 'success', 5000);
+        } catch (err) {
+            showToast('Could not revoke loader links: ' + err.message, 'error', 6000);
+        } finally {
+            revokeLoaderLinksBtn.disabled = false;
+        }
     });
 
     // ---------------- Key list state ----------------
@@ -892,6 +931,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             chkKeySystem.checked = !!data.requireKey;
             keySystemFields.classList.toggle('hidden', !data.requireKey);
+            chkVaultPaused.checked = data.launchPaused === true;
+            vaultPauseStatus.classList.toggle('hidden', !chkVaultPaused.checked);
+            verifyAttemptLimit.value = ['5', '10', '20', '30', '50'].includes(String(data.verifyLimitAttempts))
+                ? String(data.verifyLimitAttempts)
+                : '30';
+            deliveryTicketLifetime.value = ['20', '30', '45', '60'].includes(String(data.deliveryTicketSeconds))
+                ? String(data.deliveryTicketSeconds)
+                : '45';
             currentKeys = keysFromVaultData(data);
             renderKeysList();
 
@@ -1034,6 +1081,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 key: primaryKey ? primaryKey.key : '',
                 keyGeneratedAt: primaryKey ? primaryKey.keyGeneratedAt : null,
                 ipLock, boundIp,
+                launchPaused: chkVaultPaused.checked,
+                verifyLimitAttempts: Number(verifyAttemptLimit.value),
+                deliveryTicketSeconds: Number(deliveryTicketLifetime.value),
                 ...(currentOwnerLegacy && auth.currentUser ? { uid: auth.currentUser.uid } : {})
             });
 

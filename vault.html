@@ -80,6 +80,7 @@
                         <input type="text" id="loadstring-input" readonly>
                         <button id="copy-ls-btn" class="btn-accent"><i class="fa-solid fa-copy"></i> Copy</button>
                     </div>
+                    <p id="loader-token-status" class="field-hint loader-token-status" role="status" aria-live="polite">Preparing loader…</p>
                 </div>
             </div>
         </div>
@@ -89,7 +90,7 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script type="module">
-
+        import { startRotatingLoader } from './loader-ui.js';
 
         const loadingState = document.getElementById('loading-state');
         const errorState = document.getElementById('error-state');
@@ -105,6 +106,8 @@
         const keyExpiryTag = document.getElementById('key-expiry-tag');
         const loadstringInput = document.getElementById('loadstring-input');
         const copyBtn = document.getElementById('copy-ls-btn');
+        const loaderTokenStatus = document.getElementById('loader-token-status');
+        let stopLoaderRotation = null;
 
         function showOnly(el) {
             [loadingState, errorState, keypromptState, securedState].forEach(s => s.classList.add('hidden'));
@@ -128,11 +131,6 @@
         let providedKey = urlParams.get('key') || '';
         let vaultData = null;
 
-        function buildLoadstring(id, key) {
-            const keyParam = key ? `&key=${encodeURIComponent(key)}` : '';
-            return `loadstring(game:HttpGet("${window.location.origin}/api/raw?id=${encodeURIComponent(id)}${keyParam}"))()`;
-        }
-
         async function fetchInfo(key) {
             const r = await fetch(`/api/vaultinfo?id=${encodeURIComponent(vaultId)}${key ? `&key=${encodeURIComponent(key)}` : ''}`);
             return r.json();
@@ -141,7 +139,10 @@
         function showSecured(data, key) {
             securedTitle.innerHTML = `<strong>${escapeHtml(data.title || 'Untitled Vault')}</strong> is protected by <strong>VoidedX Vault</strong>.`;
             keyTag.classList.toggle('hidden', !data.requireKey);
-            loadstringInput.value = buildLoadstring(vaultId, key);
+            if (stopLoaderRotation) stopLoaderRotation();
+            loadstringInput.value = '';
+            copyBtn.disabled = true;
+            stopLoaderRotation = startRotatingLoader({ id: vaultId, key, input: loadstringInput, status: loaderTokenStatus, copyButton: copyBtn });
 
             if (data.expiresAt) {
                 const msLeft = data.expiresAt - Date.now();
@@ -213,6 +214,7 @@
         });
 
         copyBtn.addEventListener('click', () => {
+            if (!loadstringInput.value) return;
             navigator.clipboard.writeText(loadstringInput.value);
             copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
             showToast('Loadstring copied to clipboard.', 'success', 2000);

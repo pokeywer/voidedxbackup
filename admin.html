@@ -41,7 +41,7 @@
                 <div>
                     <p class="admin-eyebrow">CONTROL CENTER</p>
                     <h1>VoidedX Admin</h1>
-                    <p class="admin-subtitle">Manage announcements, review community ideas, and check site activity.</p>
+                    <p class="admin-subtitle">Manage announcements, review community ideas, inspect vault source, and check site activity.</p>
                 </div>
                 <div class="admin-heading-actions">
                     <button id="admin-refresh-btn" class="btn-ghost admin-action-btn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
@@ -56,6 +56,52 @@
                 <article class="admin-stat-card"><i class="fa-solid fa-play"></i><span>Tracked executions</span><strong id="admin-stat-executions">—</strong></article>
                 <article class="admin-stat-card"><i class="fa-solid fa-lightbulb"></i><span>Ideas submitted</span><strong id="admin-stat-ideas">—</strong></article>
             </div>
+
+            <section class="admin-card admin-vault-manager">
+                <div class="admin-section-heading">
+                    <div><p class="admin-eyebrow">PRIVATE VAULTS</p><h2><i class="fa-solid fa-shield-halved"></i> Vault source manager</h2></div>
+                    <span id="admin-vault-count" class="admin-state-pill">Loading…</span>
+                </div>
+                <p class="admin-help">Browse every saved vault, inspect its original Luau source, edit the title or code, and regenerate its obfuscated execution copy. Saving here changes the live vault used by its loader.</p>
+                <div id="admin-vault-status" class="admin-status hidden" role="status" aria-live="polite"></div>
+                <div class="admin-vault-toolbar">
+                    <input id="admin-vault-search" class="input-field" type="search" placeholder="Search title, vault ID, or owner UID" aria-label="Search vaults">
+                    <button id="admin-vault-refresh-btn" class="btn-ghost admin-action-btn" type="button"><i class="fa-solid fa-rotate"></i> Reload vaults</button>
+                </div>
+                <div class="admin-vault-layout">
+                    <div id="admin-vault-list" class="admin-vault-list" aria-label="Saved vault list"><div class="info-box"><p><i class="fa-solid fa-spinner fa-spin"></i> Loading vaults…</p></div></div>
+                    <div class="admin-vault-editor" aria-label="Vault source editor">
+                        <p id="admin-vault-empty" class="admin-vault-empty">Choose a vault to inspect its source.</p>
+                        <div id="admin-vault-edit-fields" class="admin-vault-edit-fields hidden">
+                            <div class="admin-vault-title-row">
+                                <div><label class="panel-label" for="admin-vault-title">VAULT TITLE</label><input id="admin-vault-title" class="input-field" maxlength="80" disabled></div>
+                                <span id="admin-vault-meta" class="admin-vault-meta"></span>
+                            </div>
+                            <label class="panel-label" for="admin-vault-source">READABLE SOURCE</label>
+                            <textarea id="admin-vault-source" class="input-field admin-vault-source" spellcheck="false" wrap="off" disabled placeholder="Select a vault to load its source."></textarea>
+                            <div class="admin-vault-protection">
+                                <label class="admin-check-row" for="admin-vault-obfuscation"><input id="admin-vault-obfuscation" type="checkbox" disabled><span><strong>Obfuscate execution copy</strong><small>Generates a new copy with Prometheus before saving.</small></span></label>
+                                <div class="admin-vault-options">
+                                    <div class="admin-form-field"><label class="panel-label" for="admin-vault-level">STRENGTH</label><select id="admin-vault-level" class="input-field" disabled><option value="auto">Auto</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+                                    <label class="admin-check-row" for="admin-vault-tamper"><input id="admin-vault-tamper" type="checkbox" disabled><span><strong>Mild tamper check</strong></span></label>
+                                    <label class="admin-check-row" for="admin-vault-vm"><input id="admin-vault-vm" type="checkbox" disabled><span><strong>VM protection</strong></span></label>
+                                    <label class="admin-check-row" for="admin-vault-splitting"><input id="admin-vault-splitting" type="checkbox" disabled><span><strong>More string splitting</strong></span></label>
+                                </div>
+                            </div>
+                            <div class="admin-vault-preview hidden" id="admin-vault-preview-wrap">
+                                <div class="admin-vault-preview-heading"><label class="panel-label" for="admin-vault-obfuscated-output">OBFUSCATED EXECUTION COPY</label><div><button id="admin-vault-copy-output" class="btn-ghost admin-vault-small-btn" type="button" disabled><i class="fa-solid fa-copy"></i> Copy</button><button id="admin-vault-download-output" class="btn-ghost admin-vault-small-btn" type="button" disabled><i class="fa-solid fa-download"></i> Download</button></div></div>
+                                <textarea id="admin-vault-obfuscated-output" class="input-field admin-vault-output" rows="8" readonly spellcheck="false" wrap="off"></textarea>
+                            </div>
+                            <div class="admin-vault-actions">
+                                <button id="admin-vault-copy-source" class="btn-ghost" type="button" disabled><i class="fa-solid fa-copy"></i> Copy source</button>
+                                <button id="admin-vault-download-source" class="btn-ghost" type="button" disabled><i class="fa-solid fa-download"></i> Download source</button>
+                                <button id="admin-vault-preview-btn" class="btn-ghost" type="button" disabled><i class="fa-solid fa-wand-magic-sparkles"></i> Generate preview</button>
+                                <button id="admin-vault-save-btn" class="btn-primary" type="button" disabled><i class="fa-solid fa-floppy-disk"></i> Save changes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <div class="admin-content-grid">
                 <section class="admin-card admin-announcement-card">

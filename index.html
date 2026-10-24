@@ -148,7 +148,21 @@
                     <button type="button" id="backup-now-btn" class="btn-ghost backup-now-btn"><i class="fa-solid fa-download"></i> Download backup now</button>
                     <div class="protection-hint">
                         <i class="fa-solid fa-shield-halved"></i>
-                        <span>Use the Key System Manager to gate access. Anyone who runs a client script can capture its delivered code; obfuscation only adds friction, so never include passwords or private API keys.</span>
+                        <span>Scripts up to 128 KiB are stored as readable text in Firebase; larger sources are compressed, not encrypted. Anyone who runs a client script can capture its delivered code, so never include passwords or private API keys.</span>
+                    </div>
+                    <div class="obfuscated-preview-tools">
+                        <button type="button" id="preview-obfuscated-btn" class="btn-ghost"><i class="fa-solid fa-eye"></i> Generate obfuscated preview</button>
+                        <div id="obfuscated-preview-panel" class="obfuscated-preview-panel hidden">
+                            <div class="obfuscated-preview-heading">
+                                <label class="panel-label" for="obfuscated-preview">OBFUSCATED EXECUTION SCRIPT</label>
+                                <div class="obfuscated-preview-actions">
+                                    <button type="button" id="copy-obfuscated-btn" class="btn-accent" disabled><i class="fa-solid fa-copy"></i> Copy</button>
+                                    <button type="button" id="download-obfuscated-btn" class="btn-ghost" disabled><i class="fa-solid fa-download"></i> Download</button>
+                                </div>
+                            </div>
+                            <textarea id="obfuscated-preview" class="input-field obfuscated-preview" rows="9" readonly spellcheck="false" wrap="off" aria-label="Generated obfuscated execution script"></textarea>
+                            <p id="obfuscated-preview-status" class="field-hint obfuscated-preview-status" role="status" aria-live="polite">Generate a preview to inspect the execution copy.</p>
+                        </div>
                     </div>
                 </div>
                     </div>
@@ -210,7 +224,8 @@
                             <input type="text" id="ls-output" readonly>
                             <button id="copy-out-btn" class="btn-accent"><i class="fa-solid fa-copy"></i> COPY LOADSTRING</button>
                         </div>
-                        <p class="field-hint loadstring-help">This is a small launcher that fetches your saved vault when run. To show the in-game key popup, add a key, turn on <strong>Key System</strong> and <strong>In-Game Key GUI</strong> in Key System Manager, then click Apply Changes.</p>
+                        <p id="loader-token-status" class="field-hint loader-token-status" role="status" aria-live="polite">Save your vault to prepare a rotating loader.</p>
+                        <p class="field-hint loadstring-help"><span>The displayed loader refreshes every 40 seconds, and each copy expires after 45 seconds. Copy the latest version before you run it.</span> To show the in-game key popup, add a key, turn on <strong>Key System</strong> and <strong>In-Game Key GUI</strong> in Key System Manager, then click Apply Changes.</p>
                         <div id="get-key-row" class="url-bar hidden">
                             <input type="text" id="get-key-output" readonly>
                             <button id="copy-key-link-btn" class="btn-accent"><i class="fa-solid fa-key"></i> COPY GET-KEY LINK</button>

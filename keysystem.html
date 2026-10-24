@@ -57,6 +57,44 @@
                     <p class="ks-tutorial-note">Saved keys stay in the player's executor files on that device. The server still checks each key and expiration. Expiration blocks future runs; it cannot stop a script that is already running.</p>
                 </details>
 
+                <div class="panel-group vault-emergency-control">
+                    <label class="toggle-row">
+                        <span><strong><i class="fa-solid fa-circle-pause text-red"></i> Pause all launches</strong><small>Immediately blocks new loader downloads, key checks, public-key claims, and payload delivery for this vault. It cannot stop code that is already running.</small></span>
+                        <input type="checkbox" id="chk-vault-paused">
+                        <span class="switch"></span>
+                    </label>
+                    <div id="vault-pause-status" class="info-box hidden" role="status"><i class="fa-solid fa-circle-pause text-red"></i><p>This vault is paused. Turn this off to allow launches again.</p></div>
+                </div>
+                <div class="panel-group">
+                    <label class="panel-label">REVOKE COPIED LOADER LINKS</label>
+                    <button type="button" id="revoke-loader-links-btn" class="btn-danger"><i class="fa-solid fa-link-slash"></i> Revoke all current loader links</button>
+                    <div class="info-box"><i class="fa-solid fa-circle-info text-cyan"></i><p>Immediately invalidates existing loader tokens for this vault. New loader links can be copied from the website afterward. This does not stop a script that is already running.</p></div>
+                </div>
+
+                <details class="ks-tutorial">
+                    <summary><i class="fa-solid fa-shield-halved text-cyan"></i> Advanced delivery safeguards</summary>
+                    <div class="panel-group">
+                        <label class="panel-label" for="verify-attempt-limit">KEY CHECKS PER NETWORK / 15 MINUTES</label>
+                        <select id="verify-attempt-limit" class="input-field">
+                            <option value="5">5 — Strict</option>
+                            <option value="10">10 — High protection</option>
+                            <option value="20">20 — Balanced</option>
+                            <option value="30">30 — Standard</option>
+                            <option value="50">50 — More tolerant</option>
+                        </select>
+                        <div class="info-box"><i class="fa-solid fa-shield-halved text-cyan"></i><p>Counts key verification requests from the same network, including successful checks. Lower limits can block players who share a network.</p></div>
+
+                        <label class="panel-label" for="delivery-ticket-lifetime">ONE-TIME DELIVERY TICKET LIFETIME</label>
+                        <select id="delivery-ticket-lifetime" class="input-field">
+                            <option value="20">20 seconds — Short</option>
+                            <option value="30">30 seconds</option>
+                            <option value="45">45 seconds — Standard</option>
+                            <option value="60">60 seconds — Slower connections</option>
+                        </select>
+                        <div class="info-box"><i class="fa-solid fa-ticket text-cyan"></i><p>Each ticket still works once. Shorter expiry reduces the time a copied ticket can be used, but may fail on slow connections. Click Apply Changes to save these two settings.</p></div>
+                    </div>
+                </details>
+
                 <div id="key-system-fields" class="hidden">
                     <div class="ks-tabs">
                         <button type="button" class="ks-tab active" data-tab="keys"><i class="fa-solid fa-key"></i> Keys <span id="keys-count-badge" class="keysystem-badge on hidden">0</span></button>
@@ -272,6 +310,10 @@
                                 </select>
                                 <button type="button" id="manual-ban-btn" class="btn-danger"><i class="fa-solid fa-gavel"></i> Ban</button>
                             </div>
+                        </div>
+                        <div class="info-box">
+                            <i class="fa-solid fa-triangle-exclamation text-red"></i>
+                            <p>Player IDs come from the client and can be spoofed by a modified executor. Bans and player limits deter casual sharing; they do not prove Roblox account identity. For account-grade checks, validate access through a Roblox server you control.</p>
                         </div>
                     </div>
 

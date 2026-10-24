@@ -104,6 +104,9 @@ export default async function handler(req, res) {
         const vaultSnap = await vaultRef.get();
         if (!vaultSnap.exists) return json(res, 404, { ok: false, message: 'Vault not found.' });
         const vault = vaultSnap.data();
+        if (vault.launchPaused === true) {
+            return json(res, 423, { ok: false, message: 'This vault is temporarily paused by its owner.' });
+        }
 
         if (session.userId) {
             const banned = (Array.isArray(vault.bannedUsers) ? vault.bannedUsers : [])

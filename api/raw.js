@@ -3,6 +3,7 @@ import { db } from './_admin.js';
 import { recordActiveUser } from './_executionStats.js';
 import { buildRemovedVaultGui } from './_removedVaultGui.js';
 import { getCodeForExecution } from './_deliveryCode.js';
+import { verifyLoaderToken } from './_loaderToken.js';
 
 function isExecutorRequest(req) {
     const ua = (req.headers['user-agent'] || '').toLowerCase();
@@ -21,7 +22,11 @@ function isExecutorRequest(req) {
 }
 
 export default async function handler(req, res) {
-    const { id, key, userId, trackOnly } = req.query;
+    const id = String(req.query.id || '');
+    const key = String(req.query.key || '');
+    const userId = req.query.userId;
+    const trackOnly = req.query.trackOnly;
+    const loaderToken = String(req.query.token || '');
 
     if (!id) {
         return res.status(400).send('Error: Missing Vault ID');
@@ -46,6 +51,12 @@ export default async function handler(req, res) {
         return res.redirect(302, `/vault.html?id=${encodeURIComponent(id)}${keyParam}`);
     }
 
+    if (!verifyLoaderToken(loaderToken, id, key)) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return res.status(410).send('error("[VoidedX] This loader expired. Copy the latest loader from the website and run it again.", 0)');
+    }
+
     try {
         const docSnap = await db.collection("vaults").doc(id).get();
 
@@ -56,6 +67,18 @@ export default async function handler(req, res) {
         }
 
         const vaultData = docSnap.data();
+
+        if (!verifyLoaderToken(loaderToken, id, key, vaultData.loaderVersion)) {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            return res.status(410).send('error("[VoidedX] This loader is no longer valid. Copy the latest loader from the website and run it again.", 0)');
+        }
+
+        if (vaultData.launchPaused === true) {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            return res.status(423).send('error("[VoidedX] This vault is temporarily paused by its owner.", 0)');
+        }
 
         // GUI Mode: no key in the URL at all — send an in-game popup instead that
         // asks the player to type their key, then verifies it via /api/verify.

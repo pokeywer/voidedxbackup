@@ -6,7 +6,8 @@ import {
 import {
     getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
-import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode, encodeVaultSource, decodeVaultSource, getUtf8ByteLength, MAX_VAULT_SOURCE_BYTES } from './lua-medium.js';
+import { obfuscateLua, resolveObfuscationLevel, encodeObfuscatedCode, encodeVaultSource, decodeVaultSource, getUtf8ByteLength, MAX_VAULT_SOURCE_BYTES, MAX_OBFUSCATED_OUTPUT_BYTES } from './lua-medium.js';
+import { startRotatingLoader } from './loader-ui.js';
 
 // --- YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
@@ -275,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorSaveStatus = document.getElementById('editor-save-status');
     const editorSaveLabel = document.getElementById('editor-save-label');
     const lsOutput = document.getElementById('ls-output');
+    const loaderTokenStatus = document.getElementById('loader-token-status');
     const copyBtn = document.getElementById('copy-out-btn');
     const getKeyRow = document.getElementById('get-key-row');
     const getKeyOutput = document.getElementById('get-key-output');
@@ -286,6 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const chkVmProtection = document.getElementById('chk-vm-protection');
     const chkExpandedTransforms = document.getElementById('chk-expanded-transforms');
     const backupNowBtn = document.getElementById('backup-now-btn');
+    const previewObfuscatedBtn = document.getElementById('preview-obfuscated-btn');
+    const obfuscatedPreviewPanel = document.getElementById('obfuscated-preview-panel');
+    const obfuscatedPreview = document.getElementById('obfuscated-preview');
+    const obfuscatedPreviewStatus = document.getElementById('obfuscated-preview-status');
+    const copyObfuscatedBtn = document.getElementById('copy-obfuscated-btn');
+    const downloadObfuscatedBtn = document.getElementById('download-obfuscated-btn');
     const protectionKeyStatus = document.getElementById('protection-key-status');
     const openKeysystemBtn = document.getElementById('open-keysystem-btn');
     const keysystemStatusBadge = document.getElementById('keysystem-status-badge');
@@ -311,6 +319,77 @@ document.addEventListener('DOMContentLoaded', () => {
     const execCountNum = document.getElementById('exec-count-num');
     const promoShareBtn = document.getElementById('promo-share-btn');
     const editorSourceContext = document.getElementById('editor-source-context');
+    let stopActiveLoaderRotation = null;
+    let obfuscationRevision = 0;
+    let obfuscatedPreviewIsCurrent = false;
+
+    function refreshVaultLoader(id, key = '') {
+        if (stopActiveLoaderRotation) stopActiveLoaderRotation();
+        stopActiveLoaderRotation = null;
+        if (!id) {
+            lsOutput.value = '';
+            loaderTokenStatus.textContent = 'Save your vault to prepare a rotating loader.';
+            copyBtn.disabled = true;
+            return;
+        }
+        lsOutput.value = '';
+        loaderTokenStatus.textContent = 'Preparing loader…';
+        copyBtn.disabled = true;
+        stopActiveLoaderRotation = startRotatingLoader({ id, key, input: lsOutput, status: loaderTokenStatus, copyButton: copyBtn });
+    }
+
+    function getObfuscationSettings(code) {
+        const enabled = !!(chkObfuscation && chkObfuscation.checked);
+        const requestedLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
+        const vmProtection = enabled && !!(chkVmProtection && chkVmProtection.checked);
+        const protection = {
+            tamperCheck: !vmProtection && !!(chkTamperCheck && chkTamperCheck.checked),
+            vmProtection,
+            expandedTransforms: !vmProtection && !!(chkExpandedTransforms && chkExpandedTransforms.checked)
+        };
+        return {
+            enabled,
+            requestedLevel,
+            effectiveLevel: resolveObfuscationLevel(code, requestedLevel),
+            protection
+        };
+    }
+
+    function setObfuscatedPreview(output, statusText) {
+        obfuscatedPreview.value = output;
+        obfuscatedPreviewPanel.classList.remove('hidden');
+        obfuscatedPreviewStatus.textContent = statusText;
+        obfuscatedPreviewIsCurrent = true;
+        copyObfuscatedBtn.disabled = !output;
+        downloadObfuscatedBtn.disabled = !output;
+    }
+
+    function markObfuscatedPreviewStale() {
+        if (!obfuscatedPreview.value && obfuscatedPreviewPanel.classList.contains('hidden')) return;
+        obfuscatedPreviewIsCurrent = false;
+        copyObfuscatedBtn.disabled = true;
+        downloadObfuscatedBtn.disabled = true;
+        obfuscatedPreviewStatus.textContent = 'The source or protection settings changed. Generate a fresh preview before copying or downloading.';
+    }
+
+    function clearObfuscatedPreview() {
+        obfuscatedPreview.value = '';
+        obfuscatedPreviewPanel.classList.add('hidden');
+        obfuscatedPreviewStatus.textContent = 'Generate a preview to inspect the execution copy.';
+        obfuscatedPreviewIsCurrent = false;
+        copyObfuscatedBtn.disabled = true;
+        downloadObfuscatedBtn.disabled = true;
+    }
+
+    function getLoaderKey(data) {
+        if (!data.requireKey || data.guiMode) return '';
+        if (typeof data.key === 'string' && data.key) return data.key;
+        if (Array.isArray(data.keys)) {
+            const key = data.keys.find(item => item && typeof item.key === 'string' && item.key && !item.terminated);
+            if (key) return key.key;
+        }
+        return '';
+    }
 
     function setEditorSourceContext(hasSavedVault) {
         if (!editorSourceContext) return;
@@ -840,6 +919,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadVaultIntoEditor(id, data) {
         const loadGeneration = ++editorLoadGeneration;
+        obfuscationRevision += 1;
+        clearObfuscatedPreview();
         activeVaultId.value = id;
         let loadedCode;
         try {
@@ -888,9 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
             execCountBadge.classList.remove('hidden');
         }
 
-        const keyParam = (!data.guiMode && data.requireKey && data.key) ? `&key=${encodeURIComponent(data.key)}` : '';
-        const rawUrl = `${window.location.origin}/api/raw?id=${id}${keyParam}`;
-        lsOutput.value = `loadstring(game:HttpGet("${rawUrl}"))()`;
+        refreshVaultLoader(id, getLoaderKey(data));
         resultOverlay.classList.remove('hidden');
 
         if (data.requireKey) {
@@ -1199,6 +1278,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sourceCode.addEventListener('input', () => {
         clearFieldError(sourceCode, codeError);
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
         setEditorDirty(true);
     });
     scriptTitle.addEventListener('input', () => {
@@ -1221,16 +1302,118 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (chkObfuscation) chkObfuscation.addEventListener('change', () => {
         syncObfuscationProtectionControls();
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
         setEditorDirty(true);
     });
-    if (obfuscationLevelSelect) obfuscationLevelSelect.addEventListener('change', () => setEditorDirty(true));
-    if (chkTamperCheck) chkTamperCheck.addEventListener('change', () => setEditorDirty(true));
+    if (obfuscationLevelSelect) obfuscationLevelSelect.addEventListener('change', () => {
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
+        setEditorDirty(true);
+    });
+    if (chkTamperCheck) chkTamperCheck.addEventListener('change', () => {
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
+        setEditorDirty(true);
+    });
     if (chkVmProtection) chkVmProtection.addEventListener('change', () => {
         syncObfuscationProtectionControls();
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
         setEditorDirty(true);
     });
-    if (chkExpandedTransforms) chkExpandedTransforms.addEventListener('change', () => setEditorDirty(true));
+    if (chkExpandedTransforms) chkExpandedTransforms.addEventListener('change', () => {
+        obfuscationRevision += 1;
+        markObfuscatedPreviewStale();
+        setEditorDirty(true);
+    });
     syncObfuscationProtectionControls();
+
+    previewObfuscatedBtn.addEventListener('click', async () => {
+        const code = sourceCode.value;
+        if (!code.trim()) {
+            showToast('Paste a script into the editor before generating a preview.', 'info');
+            sourceCode.focus();
+            return;
+        }
+        const settings = getObfuscationSettings(code);
+        if (!settings.enabled) {
+            showToast('Turn on Lua obfuscation first to generate an obfuscated preview.', 'info');
+            chkObfuscation.focus();
+            return;
+        }
+
+        const revision = obfuscationRevision;
+        const originalHtml = previewObfuscatedBtn.innerHTML;
+        previewObfuscatedBtn.disabled = true;
+        previewObfuscatedBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating ${settings.effectiveLevel.toUpperCase()} preview…`;
+        obfuscatedPreviewPanel.classList.remove('hidden');
+        obfuscatedPreviewStatus.textContent = 'Obfuscating the current script with the selected protection settings…';
+        try {
+            const output = await obfuscateLua(code, settings.effectiveLevel, settings.protection);
+            if (revision !== obfuscationRevision) {
+                markObfuscatedPreviewStale();
+                return;
+            }
+            const outputBytes = getUtf8ByteLength(output);
+            if (outputBytes > MAX_OBFUSCATED_OUTPUT_BYTES) {
+                throw new Error('The generated output is over the 8 MiB limit. Try lower strength or reduce the script.');
+            }
+            const outputKiB = Math.ceil(outputBytes / 1024).toLocaleString();
+            setObfuscatedPreview(output, `Current ${settings.effectiveLevel} output · ${outputKiB} KiB · not saved yet.`);
+        } catch (error) {
+            if (revision !== obfuscationRevision) {
+                markObfuscatedPreviewStale();
+                return;
+            }
+            obfuscatedPreviewIsCurrent = false;
+            copyObfuscatedBtn.disabled = true;
+            downloadObfuscatedBtn.disabled = true;
+            obfuscatedPreviewStatus.textContent = 'Preview could not be generated.';
+            showToast('Could not generate the obfuscated preview: ' + (error && error.message ? error.message : 'unknown error'), 'error', 9000);
+        } finally {
+            previewObfuscatedBtn.disabled = false;
+            previewObfuscatedBtn.innerHTML = originalHtml;
+        }
+    });
+
+    copyObfuscatedBtn.addEventListener('click', async () => {
+        if (!obfuscatedPreviewIsCurrent || !obfuscatedPreview.value) return;
+        try {
+            let copied = false;
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(obfuscatedPreview.value);
+                    copied = true;
+                } catch { /* Try the selection-based fallback below. */ }
+            }
+            if (!copied) {
+                obfuscatedPreview.focus();
+                obfuscatedPreview.select();
+                if (!document.execCommand('copy')) throw new Error('Clipboard access was denied.');
+                obfuscatedPreview.setSelectionRange(0, 0);
+            }
+            showToast('Obfuscated script copied.', 'success');
+        } catch (error) {
+            showToast('Could not copy the preview. Try selecting the text and copying it manually.', 'error', 7000);
+        }
+    });
+
+    downloadObfuscatedBtn.addEventListener('click', () => {
+        if (!obfuscatedPreviewIsCurrent || !obfuscatedPreview.value) return;
+        const baseName = String(scriptTitle.value.trim() || activeVaultId.value || 'voidedx-script')
+            .replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'voidedx-script';
+        const blobUrl = URL.createObjectURL(new Blob([obfuscatedPreview.value], { type: 'text/plain;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${baseName}_obfuscated.lua`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        showToast('Obfuscated script download started.', 'success');
+    });
 
     if (backupNowBtn) {
         backupNowBtn.addEventListener('click', () => {
@@ -1274,6 +1457,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const code = sourceCode.value;
+        const saveObfuscationRevision = obfuscationRevision;
+        const obfuscationSettings = getObfuscationSettings(code);
 
         clearFieldError(sourceCode, codeError);
 
@@ -1315,21 +1500,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let encodedObfuscatedCode = null;
-        const obfuscationEnabled = !!(chkObfuscation && chkObfuscation.checked);
-        const requestedObfuscationLevel = obfuscationLevelSelect ? obfuscationLevelSelect.value : 'auto';
-        const effectiveObfuscationLevel = resolveObfuscationLevel(code, requestedObfuscationLevel);
-        const vmProtectionEnabled = !!(obfuscationEnabled && chkVmProtection && chkVmProtection.checked);
-        const tamperCheckEnabled = !vmProtectionEnabled && !!(chkTamperCheck && chkTamperCheck.checked);
-        const expandedTransformsEnabled = !vmProtectionEnabled && !!(chkExpandedTransforms && chkExpandedTransforms.checked);
+        let generatedObfuscatedCode = null;
+        const obfuscationEnabled = obfuscationSettings.enabled;
+        const requestedObfuscationLevel = obfuscationSettings.requestedLevel;
+        const effectiveObfuscationLevel = obfuscationSettings.effectiveLevel;
+        const vmProtectionEnabled = obfuscationSettings.protection.vmProtection;
+        const tamperCheckEnabled = obfuscationSettings.protection.tamperCheck;
+        const expandedTransformsEnabled = obfuscationSettings.protection.expandedTransforms;
         if (obfuscationEnabled) {
             lockBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> OBFUSCATING ${effectiveObfuscationLevel.toUpperCase()}...`;
             try {
-                const transformed = await obfuscateLua(code, effectiveObfuscationLevel, {
-                    tamperCheck: tamperCheckEnabled,
-                    vmProtection: vmProtectionEnabled,
-                    expandedTransforms: expandedTransformsEnabled
-                });
-                encodedObfuscatedCode = await encodeObfuscatedCode(transformed);
+                generatedObfuscatedCode = await obfuscateLua(code, effectiveObfuscationLevel, obfuscationSettings.protection);
+                encodedObfuscatedCode = await encodeObfuscatedCode(generatedObfuscatedCode);
             } catch (error) {
                 showToast('Prometheus could not obfuscate this script: ' + (error && error.message ? error.message : 'unknown error'), 'error', 8000);
                 isSaving = false;
@@ -1403,6 +1585,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await setDoc(doc(db, "vaults", vaultId), payload);
+            if (!obfuscationEnabled) {
+                clearObfuscatedPreview();
+            } else if (generatedObfuscatedCode && saveObfuscationRevision === obfuscationRevision) {
+                const outputKiB = Math.ceil(getUtf8ByteLength(generatedObfuscatedCode) / 1024).toLocaleString();
+                setObfuscatedPreview(generatedObfuscatedCode, `Saved ${effectiveObfuscationLevel} execution copy · ${outputKiB} KiB.`);
+            } else {
+                markObfuscatedPreviewStale();
+            }
             const savedVault = { id: vaultId, data: payload };
             const savedIndex = cachedVaults.findIndex(vault => vault.id === vaultId);
             if (savedIndex >= 0) cachedVaults[savedIndex] = savedVault;
@@ -1421,11 +1611,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const primaryKey = existingKeyFields.keys[0] || (existingKeyFields.key ? { key: existingKeyFields.key } : null);
-            const keyParam = (!existingKeyFields.guiMode && existingKeyFields.requireKey && primaryKey) ? `&key=${encodeURIComponent(primaryKey.key)}` : '';
-            const rawUrl = `${window.location.origin}/api/raw?id=${vaultId}${keyParam}`;
-            const loadstringCmd = `loadstring(game:HttpGet("${rawUrl}"))()`;
-
-            lsOutput.value = loadstringCmd;
+            const loaderKey = (!existingKeyFields.guiMode && existingKeyFields.requireKey && primaryKey) ? primaryKey.key : '';
+            refreshVaultLoader(vaultId, loaderKey);
             resultOverlay.classList.remove('hidden');
 
             if (existingKeyFields.requireKey) {
@@ -1457,6 +1644,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------- Delete Vault ----------------
 
     function resetEditor() {
+        refreshVaultLoader('');
+        obfuscationRevision += 1;
+        clearObfuscatedPreview();
         activeVaultId.value = '';
         scriptTitle.value = '';
         setEditorSourceContext(false);

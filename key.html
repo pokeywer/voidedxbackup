@@ -96,8 +96,9 @@
                     <label>Loadstring (paste into your executor):</label>
                     <div class="copy-input">
                         <input type="text" class="loadstring-output" readonly>
-                        <button type="button" class="btn-accent copy-ls-btn"><i class="fa-solid fa-copy"></i> Copy</button>
+                        <button type="button" class="btn-accent copy-ls-btn" disabled><i class="fa-solid fa-copy"></i> Copy</button>
                     </div>
+                    <p class="field-hint loader-token-status" role="status" aria-live="polite">Preparing loader…</p>
                 </div>
                 <a href="#" class="btn-ghost key-open-link open-vault-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Vault Page</a>
             </div>
@@ -105,7 +106,7 @@
     </template>
 
     <script type="module">
-
+        import { startRotatingLoader } from './loader-ui.js';
 
         const HOUR_MS = 60 * 60 * 1000;
 
@@ -187,10 +188,6 @@
             return d > 0 ? `Expires in ${d}d ${h}h` : `Expires in ${h}h`;
         }
 
-        function buildLoadstring(id, key) {
-            return `loadstring(game:HttpGet("${window.location.origin}/api/raw?id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}"))()`;
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
         const vaultId = urlParams.get('id');
 
@@ -205,6 +202,11 @@
                 const data = await r.json();
                 if (!data.ok) {
                     errorMessage.textContent = data.message || 'Something went wrong loading this vault.';
+                    showOnly(errorState);
+                    return;
+                }
+                if (data.paused) {
+                    errorMessage.textContent = 'This vault is temporarily paused by its owner. Try again later.';
                     showOnly(errorState);
                     return;
                 }
@@ -249,6 +251,7 @@
             const copyKeyBtn = node.querySelector('.copy-key-btn');
             const loadstringOutput = node.querySelector('.loadstring-output');
             const copyLsBtn = node.querySelector('.copy-ls-btn');
+            const loaderTokenStatus = node.querySelector('.loader-token-status');
             const openVaultLink = node.querySelector('.open-vault-link');
 
             labelEl.textContent = keyDef.label || 'Public Key';
@@ -388,7 +391,7 @@
                 }
 
                 keyOutput.value = d.key;
-                loadstringOutput.value = buildLoadstring(vaultId, d.key);
+                startRotatingLoader({ id: vaultId, key: d.key, input: loadstringOutput, status: loaderTokenStatus, copyButton: copyLsBtn });
                 openVaultLink.href = `/vault.html?id=${encodeURIComponent(vaultId)}&key=${encodeURIComponent(d.key)}`;
                 oneTimeNote.classList.toggle('hidden', !d.unique);
                 oneTimeNote.textContent = 'This key was issued for one custom-link return ticket. The ticket cannot be reused. Copy and save your key now.';
@@ -427,6 +430,7 @@
                 setTimeout(() => copyKeyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy', 2000);
             });
             copyLsBtn.addEventListener('click', () => {
+                if (!loadstringOutput.value) return;
                 navigator.clipboard.writeText(loadstringOutput.value);
                 copyLsBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
                 showToast('Loadstring copied to clipboard.', 'success', 2000);

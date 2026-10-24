@@ -27,6 +27,11 @@
         'Let visitors dismiss this banner': 'Permitir que visitantes fechem este aviso',
         'Off by default. If enabled, the close button appears and stays dismissed on that device.': 'Desativado por padrão. Se ativado, o botão de fechar aparece e o aviso fica fechado naquele dispositivo.',
         'LIVE PREVIEW': 'PRÉVIA AO VIVO', 'Updates as you type': 'Atualiza enquanto você digita',
+        'Save your vault to prepare a rotating loader.': 'Salve o cofre para preparar um carregador rotativo.',
+        'Preparing loader…': 'Preparando o carregador…', 'Refreshing loader…': 'Atualizando o carregador…',
+        'Loader expired · refreshing now…': 'Carregador expirado · atualizando agora…',
+        'Current loader expires in 1s · refreshing automatically': 'O carregador atual expira em 1s · atualização automática',
+        'The displayed loader refreshes every 40 seconds, and each copy expires after 45 seconds. Copy the latest version before you run it.': 'O carregador exibido é atualizado a cada 40 segundos e cada cópia expira após 45 segundos. Copie a versão mais recente antes de executá-la.',
         'Your announcement title': 'Título do seu aviso', 'Your message will appear here.': 'Sua mensagem aparecerá aqui.',
         'Published · dismissible': 'Publicado · pode ser fechado', 'Published · persistent': 'Publicado · permanece visível', 'Expired': 'Expirado',
         'Feature ideas': 'Ideias de recursos', 'Loading…': 'Carregando…',
@@ -355,6 +360,8 @@
         if (match) return `${leading}Expira em ${match[1]}.${trailing}`;
         match = key.match(/^Current key expires in (.+)\.$/);
         if (match) return `${leading}A chave atual expira em ${match[1]}.${trailing}`;
+        match = key.match(/^Current loader expires in (\d+)s · refreshing automatically$/);
+        if (match) return `${leading}O carregador atual expira em ${match[1]}s · atualização automática${trailing}`;
         match = key.match(/^Locked to IP: (.+)$/);
         if (match) return `${leading}Vinculada ao IP: ${match[1]}${trailing}`;
         match = key.match(/^Vault: (.+)$/);

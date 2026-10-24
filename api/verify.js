@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import { db } from './_admin.js';
 import { recordExecution } from './_executionStats.js';
 
-const DELIVERY_SESSION_TTL_MS = 90 * 1000;
 const VERIFY_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const VERIFY_LIMIT_ATTEMPTS = 30;
 const VERIFY_LIMIT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -56,7 +55,11 @@ function keyDigest(key) {
     return createHash('sha256').update(String(key)).digest('hex');
 }
 
-async function consumeVerificationAttempt(vaultId, req) {
+async function consumeVerificationAttempt(vaultId, req, configuredLimit) {
+    const allowedLimits = [5, 10, 20, 30, 50];
+    const attemptLimit = allowedLimits.includes(Number(configuredLimit))
+        ? Number(configuredLimit)
+        : VERIFY_LIMIT_ATTEMPTS;
     const ip = getClientIp(req);
     const refId = createHash('sha256').update(`${vaultId}\0${ip}`).digest('hex');
     const ref = db.collection('verificationLimits').doc(refId);
@@ -73,7 +76,7 @@ async function consumeVerificationAttempt(vaultId, req) {
         const sameWindow = previousStart > 0 && now - previousStart < VERIFY_LIMIT_WINDOW_MS;
         const windowStartedAt = sameWindow ? previousStart : now;
         const attempts = (sameWindow ? Number(state.attempts) || 0 : 0) + 1;
-        const nextBlockedUntil = attempts > VERIFY_LIMIT_ATTEMPTS ? now + VERIFY_LIMIT_WINDOW_MS : 0;
+        const nextBlockedUntil = attempts > attemptLimit ? now + VERIFY_LIMIT_WINDOW_MS : 0;
         tx.set(ref, {
             vaultId,
             windowStartedAt,
@@ -136,9 +139,13 @@ export default async function handler(req, res) {
             });
         }
 
-        const initiallyKeyed = !!initialSnap.data().requireKey;
+        const initialVaultData = initialSnap.data();
+        if (initialVaultData.launchPaused === true) {
+            return json(res, 423, { ok: false, message: 'This vault is temporarily paused by its owner.' });
+        }
+        const initiallyKeyed = !!initialVaultData.requireKey;
         if (initiallyKeyed) {
-            const rateLimit = await consumeVerificationAttempt(id, req);
+            const rateLimit = await consumeVerificationAttempt(id, req, initialVaultData.verifyLimitAttempts);
             if (!rateLimit.allowed) {
                 res.setHeader('Retry-After', String(rateLimit.retryAfter));
                 return json(res, 429, { ok: false, message: 'Too many key checks from this network. Wait a few minutes and try again.' });
@@ -162,12 +169,17 @@ export default async function handler(req, res) {
                 return failure(200, 'This vault has been removed or deleted. Contact the owner for support.', 'vault_removed');
             }
             const vault = freshSnap.data();
+            if (vault.launchPaused === true) return failure(423, 'This vault is temporarily paused by its owner.');
             if (!!vault.requireKey !== initiallyKeyed) {
                 return failure(403, 'The vault access settings changed. Run the current loader again.');
             }
             if (isBanned(vault, userId)) return failure(403, 'You are banned from this vault.');
 
-            const expiresAt = now + DELIVERY_SESSION_TTL_MS;
+            const allowedTicketLifetimes = [20, 30, 45, 60];
+            const ticketLifetimeSeconds = allowedTicketLifetimes.includes(Number(vault.deliveryTicketSeconds))
+                ? Number(vault.deliveryTicketSeconds)
+                : 45;
+            const expiresAt = now + ticketLifetimeSeconds * 1000;
             const sessionBase = {
                 vaultId: id,
                 createdAt: now,

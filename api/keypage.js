@@ -48,6 +48,7 @@ export default async function handler(req, res) {
             const snap = await vaultRef.get();
             if (!snap.exists) return json(res, 404, { ok: false, message: 'Vault not found.' });
             const v = snap.data();
+            if (v.launchPaused === true) return json(res, 423, { ok: false, message: 'This vault is temporarily paused by its owner.' });
             const cfg = v.publicKeyConfig;
             if (!v.requireKey || !cfg || !cfg.enabled) {
                 return json(res, 400, { ok: false, message: 'This vault has no public key to get.' });
@@ -95,7 +96,12 @@ export default async function handler(req, res) {
                 if (!vaultSnap.exists) return { ok: false, status: 404, message: 'Vault not found.' };
                 if (!claimSnap.exists) return { ok: false, status: 400, message: 'This return ticket was already used or has expired. Start again.' };
 
-                const cfg = vaultSnap.data().publicKeyConfig;
+                const vault = vaultSnap.data();
+                if (vault.launchPaused === true) {
+                    tx.delete(claimRef);
+                    return { ok: false, status: 423, message: 'This vault is temporarily paused by its owner.' };
+                }
+                const cfg = vault.publicKeyConfig;
                 const claim = claimSnap.data();
                 if (!vaultSnap.data().requireKey || !cfg || !cfg.enabled || !configuredGate(cfg) || configuredGate(cfg) !== claim.gateUrl) {
                     return { ok: false, status: 403, message: 'The custom link changed. Start again from the Get-Key page.' };
@@ -130,6 +136,10 @@ export default async function handler(req, res) {
                 if (!claimSnap.exists) return { ok: false, status: 400, message: 'That request expired or was already used. Start again.' };
 
                 const v = snap.data();
+                if (v.launchPaused === true) {
+                    tx.delete(claimRef);
+                    return { ok: false, status: 423, message: 'This vault is temporarily paused by its owner.' };
+                }
                 const cfg = v.publicKeyConfig;
                 if (!v.requireKey || !cfg || !cfg.enabled) {
                     return { ok: false, status: 400, message: 'This vault has no public key to get.' };
@@ -214,6 +224,9 @@ export default async function handler(req, res) {
         const snap = await vaultRef.get();
         if (!snap.exists) return json(res, 404, { ok: false, message: "This vault ID doesn't exist or may have been deleted." });
         const v = snap.data();
+        if (v.launchPaused === true) {
+            return json(res, 200, { ok: true, requireKey: !!v.requireKey, title: v.title || '', paused: true, publicKey: null });
+        }
         if (!v.requireKey) return json(res, 200, { ok: true, requireKey: false, title: v.title || '' });
 
         const cfg = v.publicKeyConfig;
